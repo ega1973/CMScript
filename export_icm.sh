@@ -210,14 +210,27 @@ get_last_itemid() {
     local last_itemid=""
 
     if [ -f "$etk_file" ]; then
-        # Get the last line and extract itemid
-        local last_line=$(tail -n 1 "$etk_file")
-        # Extract itemid from the last line (format: <itemid>...</itemid> or similar)
-        last_itemid=$(echo "$last_line" | grep -oP '(?<=<itemid>)[^<]+' | tail -n 1)
+        # Look for the last "Package Completed:" line
+        # Format: Package Completed:  2814    : '291     ' ('A1001001A14D24B72939B49768', 'A1001001A20B28B71115J61199'] G:\007_Clientes_Fac_RI\masterPackage\package2814
+        # We need to extract the LAST itemid from the tuple (the one before '])
+        local last_completed=$(grep "Package Completed:" "$etk_file" | tail -n 1)
 
-        # If the previous method didn't work, try alternative extraction
+        if [ -n "$last_completed" ]; then
+            # Extract the last ItemID from the tuple (format: ..., 'ITEMID'])
+            # This captures the value between the last comma and the closing bracket
+            last_itemid=$(echo "$last_completed" | sed -n "s/.*,\s*'\([^']*\)'\s*\].*/\1/p")
+        fi
+
+        # Fallback: try XML format if Package Completed format didn't work
         if [ -z "$last_itemid" ]; then
-            last_itemid=$(echo "$last_line" | sed -n 's/.*<itemid>\([^<]*\)<\/itemid>.*/\1/p')
+            local last_line=$(tail -n 1 "$etk_file")
+            # Extract itemid from XML tags (format: <itemid>...</itemid>)
+            last_itemid=$(echo "$last_line" | grep -oP '(?<=<itemid>)[^<]+' | tail -n 1)
+
+            # If still not found, try alternative XML extraction
+            if [ -z "$last_itemid" ]; then
+                last_itemid=$(echo "$last_line" | sed -n 's/.*<itemid>\([^<]*\)<\/itemid>.*/\1/p')
+            fi
         fi
     fi
 
@@ -398,18 +411,79 @@ if [ ${IS_MULTI_MODE} -eq 0 ]; then
     # Create temporary files for processing
     TEMP_COMPLETED=$(mktemp)
     TEMP_STARTED=$(mktemp)
+    TEMP_FAILURES=$(mktemp)
 
     # Extract package information
     grep "Package Completed:" "${ETK_FILE}" > "${TEMP_COMPLETED}" 2>/dev/null || true
     grep "Package Started:" "${ETK_FILE}" > "${TEMP_STARTED}" 2>/dev/null || true
+    grep -E "(Failure at package-level:|Failure at master-level:)" "${ETK_FILE}" > "${TEMP_FAILURES}" 2>/dev/null || true
 
     COMPLETED_COUNT=$(wc -l < "${TEMP_COMPLETED}")
     STARTED_COUNT=$(wc -l < "${TEMP_STARTED}")
+    FAILURE_COUNT=$(wc -l < "${TEMP_FAILURES}")
+
+    # Check if export completed successfully
+    EXPORT_FINISHED=$(grep -c "Completed All Packages:" "${ETK_FILE}" 2>/dev/null || echo "0")
+    SUMMARY_STARTED=$(grep -c "Started Writing Summary:" "${ETK_FILE}" 2>/dev/null || echo "0")
+    SUMMARY_COMPLETED=$(grep -c "Completed Writing Summary:" "${ETK_FILE}" 2>/dev/null || echo "0")
+
+    echo "Export Status:"
+    if [ ${EXPORT_FINISHED} -gt 0 ] && [ ${SUMMARY_COMPLETED} -gt 0 ]; then
+        echo "  STATUS: ✓ COMPLETED SUCCESSFULLY"
+        COMPLETION_DATE=$(grep "Completed All Packages:" "${ETK_FILE}" | sed -n 's/.*Completed All Packages:\s*\(.*\)/\1/p')
+        if [ -n "${COMPLETION_DATE}" ]; then
+            echo "  Completion Date: ${COMPLETION_DATE}"
+        fi
+    elif [ ${FAILURE_COUNT} -gt 0 ]; then
+        echo "  STATUS: ✗ FAILED (errors detected)"
+    elif [ ${STARTED_COUNT} -gt ${COMPLETED_COUNT} ]; then
+        echo "  STATUS: ⚠ INCOMPLETE (process interrupted)"
+    else
+        echo "  STATUS: ⚠ IN PROGRESS"
+    fi
+    echo ""
 
     echo "Package Summary:"
     echo "  - Packages Started: ${STARTED_COUNT}"
     echo "  - Packages Completed: ${COMPLETED_COUNT}"
+    if [ ${FAILURE_COUNT} -gt 0 ]; then
+        echo "  - Failures Detected: ${FAILURE_COUNT}"
+    fi
     echo ""
+
+    # Check for failures
+    if [ ${FAILURE_COUNT} -gt 0 ]; then
+        echo "============================================================================"
+        echo "ERRORS DETECTED IN EXPORT"
+        echo "============================================================================"
+        echo ""
+        echo "Found ${FAILURE_COUNT} failure message(s) in the ETK file:"
+        echo ""
+
+        # Display first 5 failures (to avoid overwhelming output)
+        head -n 5 "${TEMP_FAILURES}" | while IFS= read -r failure_line; do
+            # Extract the error type
+            if echo "${failure_line}" | grep -q "Failure at package-level:"; then
+                echo "  ✗ Package-level failure:"
+                ERROR_MSG=$(echo "${failure_line}" | sed -n 's/.*Failure at package-level:\s*\(.*\)/\1/p')
+            else
+                echo "  ✗ Master-level failure:"
+                ERROR_MSG=$(echo "${failure_line}" | sed -n 's/.*Failure at master-level:\s*\(.*\)/\1/p')
+            fi
+            # Display first 200 chars of error
+            echo "    ${ERROR_MSG:0:200}"
+            echo ""
+        done
+
+        if [ ${FAILURE_COUNT} -gt 5 ]; then
+            echo "  ... and $((FAILURE_COUNT - 5)) more error(s)"
+            echo ""
+        fi
+
+        echo "Full error details can be found in: ${ETK_FILE}"
+        echo "============================================================================"
+        echo ""
+    fi
 
     # Check for incomplete packages
     if [ ${STARTED_COUNT} -gt ${COMPLETED_COUNT} ]; then
@@ -421,6 +495,14 @@ if [ ${IS_MULTI_MODE} -eq 0 ]; then
         LAST_STARTED=$(tail -n 1 "${TEMP_STARTED}" | sed -n 's/.*Package Started:[[:space:]]*\([0-9]*\).*/\1/p')
         echo "Last package started: ${LAST_STARTED}"
         echo "This package did not complete (possible error or interruption)"
+
+        # Check for retries (multiple starts of same package)
+        if [ -n "${LAST_STARTED}" ]; then
+            RETRY_COUNT=$(grep "Package Started:[[:space:]]*${LAST_STARTED}" "${TEMP_STARTED}" | wc -l)
+            if [ ${RETRY_COUNT} -gt 1 ]; then
+                echo "Package ${LAST_STARTED} was attempted ${RETRY_COUNT} times (retries detected)"
+            fi
+        fi
         echo ""
     fi
 
@@ -446,9 +528,18 @@ if [ ${IS_MULTI_MODE} -eq 0 ]; then
         fi
         echo ""
 
-        # Display all completed packages with their last item IDs
-        echo "All Completed Packages:"
-        while IFS= read -r line; do
+        # If export is incomplete, show resume information
+        if [ ${EXPORT_FINISHED} -eq 0 ] && [ -n "${LAST_ITEM_ID}" ]; then
+            echo "RESUME INFORMATION:"
+            echo "  To resume this export from the last completed item, the script will"
+            echo "  automatically use ItemID: ${LAST_ITEM_ID}"
+            echo "  Simply run the script again with the same parameters."
+            echo ""
+        fi
+
+        # Display all completed packages with their last item IDs (limit to last 10)
+        echo "Recently Completed Packages (last 10):"
+        tail -n 10 "${TEMP_COMPLETED}" | while IFS= read -r line; do
             PKG_NUM=$(echo "${line}" | sed -n 's/.*Package Completed:[[:space:]]*\([0-9]*\).*/\1/p')
             ITEM_ID=$(echo "${line}" | sed -n "s/.*,\s*'\([^']*\)'\s*\].*/\1/p")
             PKG_PATH=$(echo "${line}" | sed -n 's/.*\]\s*\(.*\)/\1/p')
@@ -459,12 +550,12 @@ if [ ${IS_MULTI_MODE} -eq 0 ]; then
                     echo "    Path: ${PKG_PATH}"
                 fi
             fi
-        done < "${TEMP_COMPLETED}"
+        done
         echo ""
     fi
 
         # Cleanup temporary files
-        rm -f "${TEMP_COMPLETED}" "${TEMP_STARTED}"
+        rm -f "${TEMP_COMPLETED}" "${TEMP_STARTED}" "${TEMP_FAILURES}"
     fi
 
     echo "============================================================================"
