@@ -37,17 +37,31 @@ Before running the scripts, you may need to modify the following configuration v
 ```batch
 SET JAVA_HOME=E:\jdk1.6.0_26
 SET DB2_HOME=E:\IBM\db2cmv8
-SET ICM_USER=icmadmin
-SET ICM_PASSWORD=Evolucion
 ```
 
 ### Linux (`export_icm.sh`)
 ```bash
 DB2_PROFILE="/home/db2cli1/sqllib/db2profile"
 IBM_HOME="/IBM"
-ICM_USER="icmadmin"
-ICM_PASSWORD="Evolucion"
 ```
+
+### Credentials
+
+Credentials must be set as environment variables before running the scripts:
+
+**Windows:**
+```batch
+SET ICM_USER=your_username
+SET ICM_PASSWORD=your_password
+```
+
+**Linux:**
+```bash
+export ICM_USER="your_username"
+export ICM_PASSWORD="your_password"
+```
+
+**Note:** For security reasons, credentials are NOT hardcoded in the scripts and must be provided via environment variables.
 
 ## Usage
 
@@ -65,10 +79,14 @@ export_icm.bat <export_name> <base_folder> "<itemtype>"
 
 **Example:**
 ```cmd
-REM Windows
+REM Windows - Set credentials first
+SET ICM_USER=your_username
+SET ICM_PASSWORD=your_password
 export_icm.bat 007ClientesFacRI G:\007_Clientes_Fac_RI "V03206007002D"
 
-# Linux
+# Linux - Set credentials first
+export ICM_USER="your_username"
+export ICM_PASSWORD="your_password"
 ./export_icm.sh 007ClientesFacRI /backup/007_Clientes_Fac_RI "V03206007002D"
 ```
 
@@ -86,10 +104,14 @@ export_icm.bat <export_name> <base_folder> <itemtype_list_file>
 
 **Example:**
 ```cmd
-REM Windows
+REM Windows - Set credentials first
+SET ICM_USER=your_username
+SET ICM_PASSWORD=your_password
 export_icm.bat 007ClientesFacRI G:\007_Clientes_Fac_RI itemtypes.txt
 
-# Linux
+# Linux - Set credentials first
+export ICM_USER="your_username"
+export ICM_PASSWORD="your_password"
 ./export_icm.sh 007ClientesFacRI /backup/007_Clientes_Fac_RI itemtypes.txt
 ```
 
@@ -135,7 +157,7 @@ If an export fails or is interrupted:
 
 **Example Resume Command (automatically executed):**
 ```bash
-java TExportManagerICM -u icmadmin -p Evolucion \
+java TExportManagerICM -u ${ICM_USER} -p ${ICM_PASSWORD} \
   -m 007ClientesFacRI \
   -l /backup/007_Clientes_Fac_RI/log \
   -a "V03206007002D" \
@@ -172,7 +194,7 @@ Starting IBM Content Manager Export...
 Export Name: 007ClientesFacRI
 Export Folder: /backup/007_Clientes_Fac_RI
 Log Folder: /backup/007_Clientes_Fac_RI/log
-User: icmadmin
+User: ${ICM_USER}
 Itemtype List File: itemtypes.txt
 
 ========================================================================
@@ -180,7 +202,7 @@ Processing Itemtype #1: V03206007002D
 Started: Mon Nov 10 10:30:00 2025
 ========================================================================
 
-Command: java TExportManagerICM -u icmadmin -p Evolucion -m 007ClientesFacRI -l "/backup/007_Clientes_Fac_RI/log" -a "V03206007002D" -v "/backup/007_Clientes_Fac_RI"
+Command: java TExportManagerICM -u ${ICM_USER} -p ${ICM_PASSWORD} -m 007ClientesFacRI -l "/backup/007_Clientes_Fac_RI/log" -a "V03206007002D" -v "/backup/007_Clientes_Fac_RI"
 
 ====================================================================
 SUCCESS: Export completed for itemtype V03206007002D
@@ -194,7 +216,7 @@ Started: Mon Nov 10 10:45:05 2025
 
 INFO: Resuming from ItemID: A1001001A13D05B53912E71640
 
-Command: java TExportManagerICM -u icmadmin -p Evolucion -m 007ClientesFacRI -l "/backup/007_Clientes_Fac_RI/log" -a "V03206007003D" -v "/backup/007_Clientes_Fac_RI" -r -s "A1001001A13D05B53912E71640"
+Command: java TExportManagerICM -u ${ICM_USER} -p ${ICM_PASSWORD} -m 007ClientesFacRI -l "/backup/007_Clientes_Fac_RI/log" -a "V03206007003D" -v "/backup/007_Clientes_Fac_RI" -r -s "A1001001A13D05B53912E71640"
 
 ============================================================================
 Export Process Summary

@@ -74,18 +74,32 @@ export_icm.bat 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
    - Set CLASSPATH with all IBM DB2 Content Manager JAR files
    - Source DB2 profile (Linux only)
 4. **Execute Export**: Run the TExportManagerICM Java tool with:
-   - User credentials (icmadmin/Evolucion)
+   - User credentials (from environment variables)
    - Export name
    - Log folder path
    - Item type
    - Export destination folder
 5. **Report Results**: Display success/failure status and file locations
 
-## Default Credentials
+## Required Credentials
 
-The scripts use these default credentials (can be modified in the script):
-- **Username**: icmadmin
-- **Password**: Evolucion
+The scripts require ICM credentials to be set as environment variables before running:
+- **ICM_USER**: IBM Content Manager username
+- **ICM_PASSWORD**: IBM Content Manager password
+
+**Example (Windows):**
+```batch
+SET ICM_USER=your_username
+SET ICM_PASSWORD=your_password
+export_icm.bat 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
+```
+
+**Example (Linux):**
+```bash
+export ICM_USER="your_username"
+export ICM_PASSWORD="your_password"
+./export_icm.sh 007ClientesFacRI /backup/007_Clientes_Fac_RI "V03206007002D"
+```
 
 ## Output
 
@@ -174,19 +188,23 @@ IBM_HOME="/IBM"
 DB2_SQLLIB="/IBM/SQLLIB"
 ```
 
-### Changing Credentials
+### Setting Credentials
+
+Credentials must be set as environment variables before running the scripts.
 
 **Windows:**
 ```batch
-SET ICM_USER=icmadmin
-SET ICM_PASSWORD=Evolucion
+SET ICM_USER=your_username
+SET ICM_PASSWORD=your_password
 ```
 
 **Linux:**
 ```bash
-ICM_USER="icmadmin"
-ICM_PASSWORD="Evolucion"
+export ICM_USER="your_username"
+export ICM_PASSWORD="your_password"
 ```
+
+**Note:** Do not hardcode credentials in the scripts for security reasons.
 
 ## Error Handling
 
