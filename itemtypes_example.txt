@@ -1,0 +1,17 @@
+# IBM Content Manager - Itemtype List Example
+# ============================================================================
+# This file contains a list of itemtypes to export.
+# One itemtype per line.
+# Lines starting with # are treated as comments and ignored.
+# Empty lines are also ignored.
+# ============================================================================
+
+# Example itemtypes:
+V03206007002D
+V03206007003D
+A1001001A13D05B53912E71640
+
+# Add your itemtypes below (remove the # to uncomment):
+# ITEMTYPE1
+# ITEMTYPE2
+# ITEMTYPE3

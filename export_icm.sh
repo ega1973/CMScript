@@ -1,24 +1,39 @@
 #!/bin/bash
 ################################################################################
-# IBM Content Manager Export Script for Linux
+# IBM Content Manager Export Script for Linux - Enhanced Version
 ################################################################################
-# Usage: export_icm.sh <export_name> <base_folder> <itemtype>
-# Example: ./export_icm.sh 007ClientesFacRI /backup/007_Clientes_Fac_RI "V03206007002D"
+# Usage:
+#   Single itemtype: export_icm.sh <export_name> <base_folder> <itemtype>
+#   Multiple itemtypes: export_icm.sh <export_name> <base_folder> <itemtype_list_file>
+#
+# Examples:
+#   ./export_icm.sh 007ClientesFacRI /backup/007_Clientes_Fac_RI "V03206007002D"
+#   ./export_icm.sh 007ClientesFacRI /backup/007_Clientes_Fac_RI itemtypes.txt
+#
+# Features:
+#   - Process single or multiple itemtypes from a file
+#   - Resume capability: if process stops, automatically resume from last position
+#   - Detailed logging of progress and resume information
+#   - Automatic detection of last itemid from .etk file for resume
 ################################################################################
 
 # Function to display usage
 usage() {
     echo "Error: $1"
     echo ""
-    echo "Usage: $0 <export_name> <base_folder> <itemtype>"
+    echo "Usage:"
+    echo "  Single itemtype: $0 <export_name> <base_folder> <itemtype>"
+    echo "  Multiple itemtypes: $0 <export_name> <base_folder> <itemtype_list_file>"
     echo ""
     echo "Parameters:"
-    echo "  export_name  : Name of the export file"
-    echo "  base_folder  : Base folder path for export"
-    echo "  itemtype     : Item type identifier (in quotes)"
+    echo "  export_name         : Name of the export file"
+    echo "  base_folder         : Base folder path for export"
+    echo "  itemtype            : Item type identifier (in quotes)"
+    echo "  itemtype_list_file  : File containing list of itemtypes (one per line)"
     echo ""
-    echo "Example:"
+    echo "Examples:"
     echo "  $0 007ClientesFacRI /backup/007_Clientes_Fac_RI \"V03206007002D\""
+    echo "  $0 007ClientesFacRI /backup/007_Clientes_Fac_RI itemtypes.txt"
     echo ""
     exit 1
 }
@@ -33,14 +48,27 @@ if [ -z "$2" ]; then
 fi
 
 if [ -z "$3" ]; then
-    usage "Itemtype is required"
+    usage "Itemtype or itemtype list file is required"
 fi
 
 # Set parameters
 EXPORT_NAME="$1"
 BASE_FOLDER="$2"
-ITEMTYPE="$3"
+ITEMTYPE_PARAM="$3"
 LOG_FOLDER="${BASE_FOLDER}/log"
+PROGRESS_LOG="${LOG_FOLDER}/export_progress.log"
+RESUME_LOG="${LOG_FOLDER}/export_resume.log"
+
+# Determine if we're processing a single itemtype or a list
+IS_FILE=0
+if [ -f "$ITEMTYPE_PARAM" ]; then
+    IS_FILE=1
+    ITEMTYPE_LIST_FILE="$ITEMTYPE_PARAM"
+else
+    # Single itemtype - create temporary file
+    ITEMTYPE_LIST_FILE="/tmp/itemtypes_temp_$$.txt"
+    echo "$ITEMTYPE_PARAM" > "$ITEMTYPE_LIST_FILE"
+fi
 
 # Configuration - DB2 and IBM paths
 DB2_PROFILE="/home/db2cli1/sqllib/db2profile"
@@ -84,6 +112,14 @@ if [ ! -d "${LOG_FOLDER}" ]; then
     echo "Log folder created successfully"
 else
     echo "Log folder already exists"
+fi
+
+################################################################################
+# Initialize progress log
+################################################################################
+if [ ! -f "${PROGRESS_LOG}" ]; then
+    echo "Export Progress Log - Created: $(date)" > "${PROGRESS_LOG}"
+    echo "============================================================================" >> "${PROGRESS_LOG}"
 fi
 
 ################################################################################
@@ -140,46 +176,162 @@ echo "CLASSPATH configured successfully"
 echo ""
 
 ################################################################################
-# Execute export
+# Function to get last itemid from ETK file
 ################################################################################
+get_last_itemid() {
+    local etk_file="${BASE_FOLDER}/${EXPORT_NAME}.etk"
+    local last_itemid=""
+
+    if [ -f "$etk_file" ]; then
+        # Get the last line and extract itemid
+        local last_line=$(tail -n 1 "$etk_file")
+        # Extract itemid from the last line (format: <itemid>...</itemid> or similar)
+        last_itemid=$(echo "$last_line" | grep -oP '(?<=<itemid>)[^<]+' | tail -n 1)
+
+        # If the previous method didn't work, try alternative extraction
+        if [ -z "$last_itemid" ]; then
+            last_itemid=$(echo "$last_line" | sed -n 's/.*<itemid>\([^<]*\)<\/itemid>.*/\1/p')
+        fi
+    fi
+
+    echo "$last_itemid"
+}
+
+################################################################################
+# Process each itemtype
+################################################################################
+echo ""
 echo "============================================================================"
 echo "Starting IBM Content Manager Export..."
 echo "============================================================================"
 echo "Export Name: ${EXPORT_NAME}"
-echo "Itemtype: ${ITEMTYPE}"
 echo "Export Folder: ${BASE_FOLDER}"
 echo "Log Folder: ${LOG_FOLDER}"
 echo "User: ${ICM_USER}"
+echo "Itemtype List File: ${ITEMTYPE_LIST_FILE}"
 echo ""
-echo "Command: java TExportManagerICM -u ${ICM_USER} -p ${ICM_PASSWORD} -m ${EXPORT_NAME} -l ${LOG_FOLDER} -a \"${ITEMTYPE}\" -v ${BASE_FOLDER}"
-echo ""
-echo "============================================================================"
 
-java TExportManagerICM \
-    -u "${ICM_USER}" \
-    -p "${ICM_PASSWORD}" \
-    -m "${EXPORT_NAME}" \
-    -l "${LOG_FOLDER}" \
-    -a "${ITEMTYPE}" \
-    -v "${BASE_FOLDER}"
+TOTAL_ERRORS=0
+ITEMTYPE_COUNT=0
 
-EXPORT_STATUS=$?
+# Read itemtypes from file
+while IFS= read -r CURRENT_ITEMTYPE || [ -n "$CURRENT_ITEMTYPE" ]; do
+    # Skip empty lines and comments
+    if [ -z "$CURRENT_ITEMTYPE" ] || [[ "$CURRENT_ITEMTYPE" =~ ^[[:space:]]*# ]]; then
+        continue
+    fi
 
-if [ ${EXPORT_STATUS} -ne 0 ]; then
+    # Trim whitespace
+    CURRENT_ITEMTYPE=$(echo "$CURRENT_ITEMTYPE" | xargs)
+
+    ITEMTYPE_COUNT=$((ITEMTYPE_COUNT + 1))
+
     echo ""
-    echo "============================================================================"
-    echo "ERROR: Export failed with error code ${EXPORT_STATUS}"
-    echo "============================================================================"
-    exit ${EXPORT_STATUS}
-fi
+    echo "========================================================================"
+    echo "Processing Itemtype #${ITEMTYPE_COUNT}: ${CURRENT_ITEMTYPE}"
+    echo "Started: $(date)"
+    echo "========================================================================"
 
+    # Log progress
+    echo "[$(date)] Processing itemtype: ${CURRENT_ITEMTYPE}" >> "${PROGRESS_LOG}"
+
+    # Check if this itemtype was already completed
+    if grep -q "COMPLETED: ${CURRENT_ITEMTYPE}" "${PROGRESS_LOG}" 2>/dev/null; then
+        echo ""
+        echo "INFO: Itemtype ${CURRENT_ITEMTYPE} was already completed. Skipping..."
+        echo "[$(date)] SKIPPED (already completed): ${CURRENT_ITEMTYPE}" >> "${PROGRESS_LOG}"
+        continue
+    fi
+
+    # Check for resume point
+    RESUME_ITEMID=""
+    if [ -f "${RESUME_LOG}" ]; then
+        RESUME_ITEMID=$(grep "^${CURRENT_ITEMTYPE}|" "${RESUME_LOG}" | cut -d'|' -f2)
+    fi
+
+    # Build export command
+    EXPORT_CMD="java TExportManagerICM -u ${ICM_USER} -p ${ICM_PASSWORD} -m ${EXPORT_NAME} -l \"${LOG_FOLDER}\" -a \"${CURRENT_ITEMTYPE}\" -v \"${BASE_FOLDER}\""
+
+    # Add resume parameters if we have a resume point
+    if [ -n "$RESUME_ITEMID" ]; then
+        echo ""
+        echo "INFO: Resuming from ItemID: ${RESUME_ITEMID}"
+        echo "[$(date)] RESUMING from ItemID: ${RESUME_ITEMID}" >> "${PROGRESS_LOG}"
+        EXPORT_CMD="${EXPORT_CMD} -r -s \"${RESUME_ITEMID}\""
+    fi
+
+    echo ""
+    echo "Command: ${EXPORT_CMD}"
+    echo ""
+
+    # Execute export
+    eval ${EXPORT_CMD}
+    EXPORT_STATUS=$?
+
+    if [ ${EXPORT_STATUS} -ne 0 ]; then
+        echo ""
+        echo "===================================================================="
+        echo "ERROR: Export failed for itemtype ${CURRENT_ITEMTYPE} with error code ${EXPORT_STATUS}"
+        echo "===================================================================="
+        echo "[$(date)] FAILED: ${CURRENT_ITEMTYPE} - Error code: ${EXPORT_STATUS}" >> "${PROGRESS_LOG}"
+
+        # Get last itemid from ETK file for resume
+        LAST_ITEMID=$(get_last_itemid)
+        if [ -n "$LAST_ITEMID" ]; then
+            echo "${CURRENT_ITEMTYPE}|${LAST_ITEMID}" > "${RESUME_LOG}"
+            echo ""
+            echo "RESUME INFO: Last exported ItemID: ${LAST_ITEMID}"
+            echo "RESUME INFO: To resume, run the script again"
+            echo "[$(date)] Last ItemID before failure: ${LAST_ITEMID}" >> "${PROGRESS_LOG}"
+        fi
+
+        TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+        # Continue with next itemtype instead of exiting
+        continue
+    else
+        echo ""
+        echo "===================================================================="
+        echo "SUCCESS: Export completed for itemtype ${CURRENT_ITEMTYPE}"
+        echo "Completed: $(date)"
+        echo "===================================================================="
+        echo "[$(date)] COMPLETED: ${CURRENT_ITEMTYPE}" >> "${PROGRESS_LOG}"
+
+        # Remove resume point if exists
+        if [ -f "${RESUME_LOG}" ]; then
+            grep -v "^${CURRENT_ITEMTYPE}|" "${RESUME_LOG}" > "${RESUME_LOG}.tmp" 2>/dev/null
+            mv "${RESUME_LOG}.tmp" "${RESUME_LOG}" 2>/dev/null
+        fi
+    fi
+
+done < "${ITEMTYPE_LIST_FILE}"
+
+################################################################################
+# Summary
+################################################################################
 echo ""
 echo "============================================================================"
-echo "Export completed successfully"
+echo "Export Process Summary"
 echo "============================================================================"
+echo "Total itemtypes processed: ${ITEMTYPE_COUNT}"
+echo "Total errors: ${TOTAL_ERRORS}"
 echo ""
 echo "Check logs at: ${LOG_FOLDER}"
+echo "  - Progress log: ${PROGRESS_LOG}"
+echo "  - Resume log: ${RESUME_LOG}"
 echo "Export files at: ${BASE_FOLDER}"
 echo ""
 
-exit 0
+# Clean up temp file if created
+if [ ${IS_FILE} -eq 0 ]; then
+    rm -f "${ITEMTYPE_LIST_FILE}"
+fi
+
+if [ ${TOTAL_ERRORS} -gt 0 ]; then
+    echo "WARNING: ${TOTAL_ERRORS} itemtype(s) failed. Check logs for details."
+    echo "[$(date)] Export finished with ${TOTAL_ERRORS} errors" >> "${PROGRESS_LOG}"
+    exit 1
+else
+    echo "All exports completed successfully!"
+    echo "[$(date)] All exports completed successfully" >> "${PROGRESS_LOG}"
+    exit 0
+fi
