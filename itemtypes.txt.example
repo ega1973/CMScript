@@ -1,0 +1,13 @@
+# IBM Content Manager Export Configuration File
+# Format: <export_name> <base_folder> <itemtype>
+# Each line represents one itemtype export with its own name and folder
+#
+# Examples:
+
+# Linux paths
+007ClientesFacRI /backup/007_Clientes_Fac_RI V03206007002D
+007ClientesConstruya /backup/007_Clientes_Construya V03206007003D
+
+# Windows paths (uncomment for Windows)
+# 007ClientesFacRI G:\007_Clientes_Fac_RI V03206007002D
+# 007ClientesConstruya G:\007_Clientes_Construya V03206007003D
