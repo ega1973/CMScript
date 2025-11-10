@@ -49,9 +49,21 @@ SET JAVA_HOME=E:\jdk1.6.0_26
 SET DB2_HOME=E:\IBM\db2cmv8
 SET JAVA_EXE=%JAVA_HOME%\bin\java
 
-REM ICM credentials (can be modified as needed)
-SET ICM_USER=icmadmin
-SET ICM_PASSWORD=Evolucion
+REM ICM credentials - MUST be set via environment variables before running
+REM Example: SET ICM_USER=your_username
+REM Example: SET ICM_PASSWORD=your_password
+IF "%ICM_USER%"=="" (
+    echo Error: ICM_USER environment variable is not set
+    echo Please set ICM_USER before running this script
+    echo Example: SET ICM_USER=your_username
+    exit /b 1
+)
+IF "%ICM_PASSWORD%"=="" (
+    echo Error: ICM_PASSWORD environment variable is not set
+    echo Please set ICM_PASSWORD before running this script
+    echo Example: SET ICM_PASSWORD=your_password
+    exit /b 1
+)
 
 REM ============================================================================
 REM Determine if we're processing a single itemtype or a list
@@ -173,7 +185,8 @@ REM ============================================================================
 :GetLastItemId
 SET _EXPORT_NAME=%~1
 SET _BASE_FOLDER=%~2
-SET ETK_FILE=%_BASE_FOLDER%\%_EXPORT_NAME%.etk
+SET _LOG_FOLDER=%_BASE_FOLDER%\log
+SET ETK_FILE=%_LOG_FOLDER%\%_EXPORT_NAME%.etk
 SET LAST_ITEMID=
 IF EXIST "%ETK_FILE%" (
     for /f "usebackq tokens=*" %%a in ("%ETK_FILE%") do (

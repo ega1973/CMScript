@@ -85,9 +85,21 @@ DB2_PROFILE="/home/db2cli1/sqllib/db2profile"
 IBM_HOME="/IBM"
 DB2_SQLLIB="/IBM/SQLLIB"
 
-# ICM credentials (can be modified as needed)
-ICM_USER="icmadmin"
-ICM_PASSWORD="Evolucion"
+# ICM credentials - MUST be set via environment variables before running
+# Example: export ICM_USER="your_username"
+# Example: export ICM_PASSWORD="your_password"
+if [ -z "$ICM_USER" ]; then
+    echo "Error: ICM_USER environment variable is not set"
+    echo "Please set ICM_USER before running this script"
+    echo "Example: export ICM_USER=\"your_username\""
+    exit 1
+fi
+if [ -z "$ICM_PASSWORD" ]; then
+    echo "Error: ICM_PASSWORD environment variable is not set"
+    echo "Please set ICM_PASSWORD before running this script"
+    echo "Example: export ICM_PASSWORD=\"your_password\""
+    exit 1
+fi
 
 ################################################################################
 # Create required folders (only for single itemtype mode)
@@ -193,7 +205,8 @@ echo ""
 get_last_itemid() {
     local export_name="$1"
     local base_folder="$2"
-    local etk_file="${base_folder}/${export_name}.etk"
+    local log_folder="${base_folder}/log"
+    local etk_file="${log_folder}/${export_name}.etk"
     local last_itemid=""
 
     if [ -f "$etk_file" ]; then
