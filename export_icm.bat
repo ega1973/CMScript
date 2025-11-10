@@ -4,14 +4,20 @@ REM IBM Content Manager Export Script for Windows - Enhanced Version
 REM ============================================================================
 REM Usage:
 REM   Single itemtype: export_icm.bat <export_name> <base_folder> <itemtype>
-REM   Multiple itemtypes: export_icm.bat <export_name> <base_folder> <itemtype_list_file>
+REM   Multiple itemtypes: export_icm.bat <itemtype_list_file>
 REM
 REM Examples:
 REM   export_icm.bat 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
-REM   export_icm.bat 007ClientesFacRI G:\007_Clientes_Fac_RI itemtypes.txt
+REM   export_icm.bat itemtypes.txt
+REM
+REM itemtypes.txt format (space or tab separated):
+REM   <export_name> <base_folder> <itemtype>
+REM   007ClientesFacRI G:\007_Clientes_Fac_RI V03206007002D
+REM   007ClientesConstruya G:\007_Clientes_Construya V03206007003D
 REM
 REM Features:
 REM   - Process single or multiple itemtypes from a file
+REM   - Each itemtype can have its own export name and base folder
 REM   - Resume capability: if process stops, automatically resume from last position
 REM   - Detailed logging of progress and resume information
 REM   - Automatic detection of last itemid from .etk file for resume
@@ -21,51 +27,22 @@ SETLOCAL EnableDelayedExpansion
 
 REM Check if required parameters are provided
 IF "%~1"=="" (
-    echo Error: Export name is required
+    echo Error: At least one parameter is required
     echo.
     echo Usage:
     echo   Single itemtype: %0 ^<export_name^> ^<base_folder^> ^<itemtype^>
-    echo   Multiple itemtypes: %0 ^<export_name^> ^<base_folder^> ^<itemtype_list_file^>
+    echo   Multiple itemtypes: %0 ^<itemtype_list_file^>
+    echo.
+    echo itemtypes.txt format (space or tab separated):
+    echo   ^<export_name^> ^<base_folder^> ^<itemtype^>
+    echo   007ClientesFacRI G:\007_Clientes_Fac_RI V03206007002D
+    echo   007ClientesConstruya G:\007_Clientes_Construya V03206007003D
     echo.
     echo Examples:
     echo   %0 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
-    echo   %0 007ClientesFacRI G:\007_Clientes_Fac_RI itemtypes.txt
+    echo   %0 itemtypes.txt
     exit /b 1
 )
-
-IF "%~2"=="" (
-    echo Error: Base folder is required
-    echo.
-    echo Usage:
-    echo   Single itemtype: %0 ^<export_name^> ^<base_folder^> ^<itemtype^>
-    echo   Multiple itemtypes: %0 ^<export_name^> ^<base_folder^> ^<itemtype_list_file^>
-    echo.
-    echo Examples:
-    echo   %0 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
-    echo   %0 007ClientesFacRI G:\007_Clientes_Fac_RI itemtypes.txt
-    exit /b 1
-)
-
-IF "%~3"=="" (
-    echo Error: Itemtype or itemtype list file is required
-    echo.
-    echo Usage:
-    echo   Single itemtype: %0 ^<export_name^> ^<base_folder^> ^<itemtype^>
-    echo   Multiple itemtypes: %0 ^<export_name^> ^<base_folder^> ^<itemtype_list_file^>
-    echo.
-    echo Examples:
-    echo   %0 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
-    echo   %0 007ClientesFacRI G:\007_Clientes_Fac_RI itemtypes.txt
-    exit /b 1
-)
-
-REM Set parameters
-SET EXPORT_NAME=%~1
-SET BASE_FOLDER=%~2
-SET ITEMTYPE_PARAM=%~3
-SET LOG_FOLDER=%BASE_FOLDER%\log
-SET PROGRESS_LOG=%LOG_FOLDER%\export_progress.log
-SET RESUME_LOG=%LOG_FOLDER%\export_resume.log
 
 REM Configuration - Java and DB2 paths
 SET JAVA_HOME=E:\jdk1.6.0_26
@@ -80,56 +57,75 @@ REM ============================================================================
 REM Determine if we're processing a single itemtype or a list
 REM ============================================================================
 SET IS_FILE=0
-IF EXIST "%ITEMTYPE_PARAM%" (
+SET IS_MULTI_MODE=0
+
+IF EXIST "%~1" (
+    REM File mode: itemtypes.txt with three columns
     SET IS_FILE=1
-    SET ITEMTYPE_LIST_FILE=%ITEMTYPE_PARAM%
-) ELSE (
-    REM Single itemtype - create temporary file
+    SET IS_MULTI_MODE=1
+    SET ITEMTYPE_LIST_FILE=%~1
+) ELSE IF NOT "%~1"=="" IF NOT "%~2"=="" IF NOT "%~3"=="" (
+    REM Single itemtype mode: export_name base_folder itemtype
+    SET IS_FILE=0
+    SET IS_MULTI_MODE=0
+    SET EXPORT_NAME=%~1
+    SET BASE_FOLDER=%~2
+    SET ITEMTYPE_PARAM=%~3
+    SET LOG_FOLDER=%BASE_FOLDER%\log
+    SET PROGRESS_LOG=%LOG_FOLDER%\export_progress.log
+    SET RESUME_LOG=%LOG_FOLDER%\export_resume.log
+    REM Create temporary file with three columns
     SET ITEMTYPE_LIST_FILE=%TEMP%\itemtypes_temp_%RANDOM%.txt
-    echo %ITEMTYPE_PARAM%>"%ITEMTYPE_LIST_FILE%"
-)
-
-REM ============================================================================
-REM Create required folders
-REM ============================================================================
-echo.
-echo ============================================================================
-echo Creating folder structure...
-echo ============================================================================
-echo Base folder: %BASE_FOLDER%
-echo Log folder: %LOG_FOLDER%
-echo.
-
-IF NOT EXIST "%BASE_FOLDER%" (
-    echo Creating base folder: %BASE_FOLDER%
-    mkdir "%BASE_FOLDER%"
-    IF ERRORLEVEL 1 (
-        echo Error: Failed to create base folder
-        exit /b 1
-    )
-    echo Base folder created successfully
+    echo %EXPORT_NAME% %BASE_FOLDER% %ITEMTYPE_PARAM%>"%ITEMTYPE_LIST_FILE%"
 ) ELSE (
-    echo Base folder already exists
+    echo Error: Invalid parameters
+    echo Provide either ^<itemtype_list_file^> or ^<export_name^> ^<base_folder^> ^<itemtype^>
+    exit /b 1
 )
 
-IF NOT EXIST "%LOG_FOLDER%" (
-    echo Creating log folder: %LOG_FOLDER%
-    mkdir "%LOG_FOLDER%"
-    IF ERRORLEVEL 1 (
-        echo Error: Failed to create log folder
-        exit /b 1
+REM ============================================================================
+REM Create required folders (only for single itemtype mode)
+REM ============================================================================
+IF %IS_MULTI_MODE% EQU 0 (
+    echo.
+    echo ============================================================================
+    echo Creating folder structure...
+    echo ============================================================================
+    echo Base folder: %BASE_FOLDER%
+    echo Log folder: %LOG_FOLDER%
+    echo.
+
+    IF NOT EXIST "%BASE_FOLDER%" (
+        echo Creating base folder: %BASE_FOLDER%
+        mkdir "%BASE_FOLDER%"
+        IF ERRORLEVEL 1 (
+            echo Error: Failed to create base folder
+            exit /b 1
+        )
+        echo Base folder created successfully
+    ) ELSE (
+        echo Base folder already exists
     )
-    echo Log folder created successfully
-) ELSE (
-    echo Log folder already exists
-)
 
-REM ============================================================================
-REM Initialize progress log
-REM ============================================================================
-IF NOT EXIST "%PROGRESS_LOG%" (
-    echo Export Progress Log - Created: %DATE% %TIME% > "%PROGRESS_LOG%"
-    echo ============================================================================ >> "%PROGRESS_LOG%"
+    IF NOT EXIST "%LOG_FOLDER%" (
+        echo Creating log folder: %LOG_FOLDER%
+        mkdir "%LOG_FOLDER%"
+        IF ERRORLEVEL 1 (
+            echo Error: Failed to create log folder
+            exit /b 1
+        )
+        echo Log folder created successfully
+    ) ELSE (
+        echo Log folder already exists
+    )
+
+    REM ============================================================================
+    REM Initialize progress log
+    REM ============================================================================
+    IF NOT EXIST "%PROGRESS_LOG%" (
+        echo Export Progress Log - Created: %DATE% %TIME% > "%PROGRESS_LOG%"
+        echo ============================================================================ >> "%PROGRESS_LOG%"
+    )
 )
 
 REM ============================================================================
@@ -172,9 +168,12 @@ echo.
 
 REM ============================================================================
 REM Function to get last itemid from ETK file
+REM Parameters: %1=export_name, %2=base_folder
 REM ============================================================================
 :GetLastItemId
-SET ETK_FILE=%BASE_FOLDER%\%EXPORT_NAME%.etk
+SET _EXPORT_NAME=%~1
+SET _BASE_FOLDER=%~2
+SET ETK_FILE=%_BASE_FOLDER%\%_EXPORT_NAME%.etk
 SET LAST_ITEMID=
 IF EXIST "%ETK_FILE%" (
     for /f "usebackq tokens=*" %%a in ("%ETK_FILE%") do (
@@ -196,9 +195,6 @@ echo.
 echo ============================================================================
 echo Starting IBM Content Manager Export...
 echo ============================================================================
-echo Export Name: %EXPORT_NAME%
-echo Export Folder: %BASE_FOLDER%
-echo Log Folder: %LOG_FOLDER%
 echo User: %ICM_USER%
 echo Itemtype List File: %ITEMTYPE_LIST_FILE%
 echo.
@@ -206,48 +202,90 @@ echo.
 SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
-for /f "usebackq tokens=*" %%i in ("%ITEMTYPE_LIST_FILE%") do (
-    SET CURRENT_ITEMTYPE=%%i
-    SET /A ITEMTYPE_COUNT+=1
+REM Read itemtypes from file (format: export_name base_folder itemtype)
+for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
+    SET CURRENT_EXPORT_NAME=%%a
+    SET CURRENT_BASE_FOLDER=%%b
+    SET CURRENT_ITEMTYPE=%%c
 
-    REM Skip empty lines
-    IF NOT "!CURRENT_ITEMTYPE!"=="" (
+    REM Skip empty lines and comments
+    IF NOT "!CURRENT_EXPORT_NAME!"=="" IF NOT "!CURRENT_EXPORT_NAME:~0,1!"=="#" (
+        REM Validate that we have all three columns
+        IF "!CURRENT_EXPORT_NAME!"=="" goto :SkipLine
+        IF "!CURRENT_BASE_FOLDER!"=="" goto :SkipLine
+        IF "!CURRENT_ITEMTYPE!"=="" goto :SkipLine
+
+        REM Set up folders for this itemtype
+        SET CURRENT_LOG_FOLDER=!CURRENT_BASE_FOLDER!\log
+        SET CURRENT_PROGRESS_LOG=!CURRENT_LOG_FOLDER!\export_progress.log
+        SET CURRENT_RESUME_LOG=!CURRENT_LOG_FOLDER!\export_resume.log
+
+        REM Create folders for this itemtype
+        IF NOT EXIST "!CURRENT_BASE_FOLDER!" (
+            mkdir "!CURRENT_BASE_FOLDER!"
+            IF ERRORLEVEL 1 (
+                echo ERROR: Failed to create base folder: !CURRENT_BASE_FOLDER!
+                SET /A TOTAL_ERRORS+=1
+                goto :SkipLine
+            )
+        )
+
+        IF NOT EXIST "!CURRENT_LOG_FOLDER!" (
+            mkdir "!CURRENT_LOG_FOLDER!"
+            IF ERRORLEVEL 1 (
+                echo ERROR: Failed to create log folder: !CURRENT_LOG_FOLDER!
+                SET /A TOTAL_ERRORS+=1
+                goto :SkipLine
+            )
+        )
+
+        REM Initialize progress log if needed
+        IF NOT EXIST "!CURRENT_PROGRESS_LOG!" (
+            echo Export Progress Log - Created: !DATE! !TIME! > "!CURRENT_PROGRESS_LOG!"
+            echo ============================================================================ >> "!CURRENT_PROGRESS_LOG!"
+        )
+
+        SET /A ITEMTYPE_COUNT+=1
+
         echo.
         echo ========================================================================
-        echo Processing Itemtype #!ITEMTYPE_COUNT!: !CURRENT_ITEMTYPE!
+        echo Processing Itemtype #!ITEMTYPE_COUNT!
+        echo Export Name: !CURRENT_EXPORT_NAME!
+        echo Base Folder: !CURRENT_BASE_FOLDER!
+        echo Itemtype: !CURRENT_ITEMTYPE!
         echo Started: !DATE! !TIME!
         echo ========================================================================
 
         REM Log progress
-        echo [!DATE! !TIME!] Processing itemtype: !CURRENT_ITEMTYPE! >> "%PROGRESS_LOG%"
+        echo [!DATE! !TIME!] Processing itemtype: !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
 
         REM Check if this itemtype was already completed
-        findstr /C:"COMPLETED: !CURRENT_ITEMTYPE!" "%PROGRESS_LOG%" >nul 2>&1
+        findstr /C:"COMPLETED: !CURRENT_ITEMTYPE!" "!CURRENT_PROGRESS_LOG!" >nul 2>&1
         IF !ERRORLEVEL! EQU 0 (
             echo.
             echo INFO: Itemtype !CURRENT_ITEMTYPE! was already completed. Skipping...
-            echo [!DATE! !TIME!] SKIPPED (already completed): !CURRENT_ITEMTYPE! >> "%PROGRESS_LOG%"
-            goto :NextItemtype
+            echo [!DATE! !TIME!] SKIPPED (already completed): !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
+            goto :SkipLine
         )
 
         REM Check for resume point
         SET RESUME_ITEMID=
-        IF EXIST "%RESUME_LOG%" (
-            for /f "usebackq tokens=1,2 delims=|" %%a in ("%RESUME_LOG%") do (
-                if "%%a"=="!CURRENT_ITEMTYPE!" (
-                    SET RESUME_ITEMID=%%b
+        IF EXIST "!CURRENT_RESUME_LOG!" (
+            for /f "usebackq tokens=1,2 delims=|" %%x in ("!CURRENT_RESUME_LOG!") do (
+                if "%%x"=="!CURRENT_ITEMTYPE!" (
+                    SET RESUME_ITEMID=%%y
                 )
             )
         )
 
         REM Build export command
-        SET EXPORT_CMD="%JAVA_EXE%" TExportManagerICM -u %ICM_USER% -p %ICM_PASSWORD% -m %EXPORT_NAME% -l "%LOG_FOLDER%" -a "!CURRENT_ITEMTYPE!" -v "%BASE_FOLDER%"
+        SET EXPORT_CMD="%JAVA_EXE%" TExportManagerICM -u %ICM_USER% -p %ICM_PASSWORD% -m !CURRENT_EXPORT_NAME! -l "!CURRENT_LOG_FOLDER!" -a "!CURRENT_ITEMTYPE!" -v "!CURRENT_BASE_FOLDER!"
 
         REM Add resume parameters if we have a resume point
         IF NOT "!RESUME_ITEMID!"=="" (
             echo.
             echo INFO: Resuming from ItemID: !RESUME_ITEMID!
-            echo [!DATE! !TIME!] RESUMING from ItemID: !RESUME_ITEMID! >> "%PROGRESS_LOG%"
+            echo [!DATE! !TIME!] RESUMING from ItemID: !RESUME_ITEMID! >> "!CURRENT_PROGRESS_LOG!"
             SET EXPORT_CMD=!EXPORT_CMD! -r -s "!RESUME_ITEMID!"
         )
 
@@ -265,37 +303,37 @@ for /f "usebackq tokens=*" %%i in ("%ITEMTYPE_LIST_FILE%") do (
             echo ====================================================================
             echo ERROR: Export failed for itemtype !CURRENT_ITEMTYPE! with error code !EXPORT_STATUS!
             echo ====================================================================
-            echo [!DATE! !TIME!] FAILED: !CURRENT_ITEMTYPE! - Error code: !EXPORT_STATUS! >> "%PROGRESS_LOG%"
+            echo [!DATE! !TIME!] FAILED: !CURRENT_ITEMTYPE! - Error code: !EXPORT_STATUS! >> "!CURRENT_PROGRESS_LOG!"
 
             REM Get last itemid from ETK file for resume
-            call :GetLastItemId
+            call :GetLastItemId "!CURRENT_EXPORT_NAME!" "!CURRENT_BASE_FOLDER!"
             IF NOT "!LAST_ITEMID!"=="" (
-                echo !CURRENT_ITEMTYPE!|!LAST_ITEMID! > "%RESUME_LOG%"
+                echo !CURRENT_ITEMTYPE!|!LAST_ITEMID! > "!CURRENT_RESUME_LOG!"
                 echo.
                 echo RESUME INFO: Last exported ItemID: !LAST_ITEMID!
                 echo RESUME INFO: To resume, run the script again
-                echo [!DATE! !TIME!] Last ItemID before failure: !LAST_ITEMID! >> "%PROGRESS_LOG%"
+                echo [!DATE! !TIME!] Last ItemID before failure: !LAST_ITEMID! >> "!CURRENT_PROGRESS_LOG!"
             )
 
             SET /A TOTAL_ERRORS+=1
             REM Continue with next itemtype instead of exiting
-            goto :NextItemtype
+            goto :SkipLine
         ) ELSE (
             echo.
             echo ====================================================================
             echo SUCCESS: Export completed for itemtype !CURRENT_ITEMTYPE!
             echo Completed: !DATE! !TIME!
             echo ====================================================================
-            echo [!DATE! !TIME!] COMPLETED: !CURRENT_ITEMTYPE! >> "%PROGRESS_LOG%"
+            echo [!DATE! !TIME!] COMPLETED: !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
 
             REM Remove resume point if exists
-            IF EXIST "%RESUME_LOG%" (
-                findstr /V /C:"!CURRENT_ITEMTYPE!|" "%RESUME_LOG%" > "%RESUME_LOG%.tmp" 2>nul
-                move /Y "%RESUME_LOG%.tmp" "%RESUME_LOG%" >nul 2>&1
+            IF EXIST "!CURRENT_RESUME_LOG!" (
+                findstr /V /C:"!CURRENT_ITEMTYPE!|" "!CURRENT_RESUME_LOG!" > "!CURRENT_RESUME_LOG!.tmp" 2>nul
+                move /Y "!CURRENT_RESUME_LOG!.tmp" "!CURRENT_RESUME_LOG!" >nul 2>&1
             )
         )
 
-        :NextItemtype
+        :SkipLine
     )
 )
 
@@ -311,32 +349,33 @@ echo Total errors: %TOTAL_ERRORS%
 echo.
 
 REM ============================================================================
-REM Parse ETK log file for package information
+REM Parse ETK log file for package information (only for single itemtype mode)
 REM ============================================================================
-echo ============================================================================
-echo Analyzing ETK log file...
-echo ============================================================================
-echo.
+IF %IS_MULTI_MODE% EQU 0 (
+    echo ============================================================================
+    echo Analyzing ETK log file...
+    echo ============================================================================
+    echo.
 
-REM Find the ETK file in the log folder
-SET ETK_FILE=
-FOR %%F IN ("%LOG_FOLDER%\*.etk") DO (
-    SET ETK_FILE=%%F
-    GOTO :FoundETK
-)
+    REM Find the ETK file in the log folder
+    SET ETK_FILE=
+    FOR %%F IN ("%LOG_FOLDER%\*.etk") DO (
+        SET ETK_FILE=%%F
+        GOTO :FoundETK
+    )
 
-:FoundETK
-IF "%ETK_FILE%"=="" (
-    echo Warning: No ETK file found in %LOG_FOLDER%
-    echo Skipping package analysis
-    GOTO :EndAnalysis
-)
+    :FoundETK
+    IF "%ETK_FILE%"=="" (
+        echo Warning: No ETK file found in %LOG_FOLDER%
+        echo Skipping package analysis
+        GOTO :EndAnalysis
+    )
 
-IF NOT EXIST "%ETK_FILE%" (
-    echo Warning: No ETK file found in %LOG_FOLDER%
-    echo Skipping package analysis
-    GOTO :EndAnalysis
-)
+    IF NOT EXIST "%ETK_FILE%" (
+        echo Warning: No ETK file found in %LOG_FOLDER%
+        echo Skipping package analysis
+        GOTO :EndAnalysis
+    )
 
 echo Found ETK file: %ETK_FILE%
 echo.
@@ -449,41 +488,40 @@ IF %COMPLETED_COUNT% GTR 0 (
     echo.
 )
 
-REM Cleanup temporary files
-IF EXIST "%TEMP_COMPLETED%" DEL /Q "%TEMP_COMPLETED%"
-IF EXIST "%TEMP_STARTED%" DEL /Q "%TEMP_STARTED%"
+    REM Cleanup temporary files
+    IF EXIST "%TEMP_COMPLETED%" DEL /Q "%TEMP_COMPLETED%"
+    IF EXIST "%TEMP_STARTED%" DEL /Q "%TEMP_STARTED%"
 
-:EndAnalysis
-echo ============================================================================
-echo Analysis Complete
-echo ============================================================================
-echo.
-echo Check logs at: %LOG_FOLDER%
-echo   - Progress log: %PROGRESS_LOG%
-echo   - Resume log: %RESUME_LOG%
-echo Export files at: %BASE_FOLDER%
-echo.
+    :EndAnalysis
+    echo ============================================================================
+    echo Analysis Complete
+    echo ============================================================================
+    echo.
+    echo Check logs at: %LOG_FOLDER%
+    echo   - Progress log: %PROGRESS_LOG%
+    echo   - Resume log: %RESUME_LOG%
+    echo Export files at: %BASE_FOLDER%
+    echo.
+) ELSE (
+    echo ============================================================================
+    echo Multi-itemtype mode complete
+    echo ============================================================================
+    echo.
+    echo Each itemtype has its own log folder. Check individual folders for details.
+    echo.
+)
+
+REM Clean up temp file if created
+IF %IS_FILE% EQU 0 (
+    del "%ITEMTYPE_LIST_FILE%" >nul 2>&1
+)
 
 IF %TOTAL_ERRORS% GTR 0 (
     echo WARNING: %TOTAL_ERRORS% itemtype(s) failed. Check logs for details.
-    echo [!DATE! !TIME!] Export finished with %TOTAL_ERRORS% errors >> "%PROGRESS_LOG%"
-
-    REM Clean up temp file if created
-    IF %IS_FILE% EQU 0 (
-        del "%ITEMTYPE_LIST_FILE%" >nul 2>&1
-    )
-
     ENDLOCAL
     exit /b 1
 ) ELSE (
     echo All exports completed successfully!
-    echo [!DATE! !TIME!] All exports completed successfully >> "%PROGRESS_LOG%"
-
-    REM Clean up temp file if created
-    IF %IS_FILE% EQU 0 (
-        del "%ITEMTYPE_LIST_FILE%" >nul 2>&1
-    )
-
     ENDLOCAL
     exit /b 0
 )
