@@ -178,6 +178,101 @@ echo "==========================================================================
 echo "Export completed successfully"
 echo "============================================================================"
 echo ""
+
+################################################################################
+# Parse ETK log file for package information
+################################################################################
+echo "============================================================================"
+echo "Analyzing ETK log file..."
+echo "============================================================================"
+echo ""
+
+# Find the ETK file in the log folder
+ETK_FILE=$(find "${LOG_FOLDER}" -name "*.etk" -type f | head -n 1)
+
+if [ -z "${ETK_FILE}" ]; then
+    echo "Warning: No ETK file found in ${LOG_FOLDER}"
+    echo "Skipping package analysis"
+else
+    echo "Found ETK file: ${ETK_FILE}"
+    echo ""
+
+    # Create temporary files for processing
+    TEMP_COMPLETED=$(mktemp)
+    TEMP_STARTED=$(mktemp)
+
+    # Extract package information
+    grep "Package Completed:" "${ETK_FILE}" > "${TEMP_COMPLETED}" 2>/dev/null || true
+    grep "Package Started:" "${ETK_FILE}" > "${TEMP_STARTED}" 2>/dev/null || true
+
+    COMPLETED_COUNT=$(wc -l < "${TEMP_COMPLETED}")
+    STARTED_COUNT=$(wc -l < "${TEMP_STARTED}")
+
+    echo "Package Summary:"
+    echo "  - Packages Started: ${STARTED_COUNT}"
+    echo "  - Packages Completed: ${COMPLETED_COUNT}"
+    echo ""
+
+    # Check for incomplete packages
+    if [ ${STARTED_COUNT} -gt ${COMPLETED_COUNT} ]; then
+        INCOMPLETE=$((STARTED_COUNT - COMPLETED_COUNT))
+        echo "WARNING: Found ${INCOMPLETE} incomplete package(s)"
+        echo ""
+
+        # Extract the last started package number
+        LAST_STARTED=$(tail -n 1 "${TEMP_STARTED}" | sed -n 's/.*Package Started:[[:space:]]*\([0-9]*\).*/\1/p')
+        echo "Last package started: ${LAST_STARTED}"
+        echo "This package did not complete (possible error or interruption)"
+        echo ""
+    fi
+
+    # Display last completed package and its last item ID
+    if [ ${COMPLETED_COUNT} -gt 0 ]; then
+        echo "Last Completed Package Details:"
+        LAST_COMPLETED_LINE=$(tail -n 1 "${TEMP_COMPLETED}")
+
+        # Extract package number
+        PACKAGE_NUM=$(echo "${LAST_COMPLETED_LINE}" | sed -n 's/.*Package Completed:[[:space:]]*\([0-9]*\).*/\1/p')
+
+        # Extract the last item ID (the last value before the closing bracket ']')
+        # Pattern: Extract content between quotes after the last comma before ']'
+        LAST_ITEM_ID=$(echo "${LAST_COMPLETED_LINE}" | sed -n "s/.*,\s*'\([^']*\)'\s*\].*/\1/p")
+
+        # Extract the path if present
+        PACKAGE_PATH=$(echo "${LAST_COMPLETED_LINE}" | sed -n 's/.*\]\s*\(.*\)/\1/p')
+
+        echo "  - Package Number: ${PACKAGE_NUM}"
+        echo "  - Last Item ID: ${LAST_ITEM_ID}"
+        if [ -n "${PACKAGE_PATH}" ]; then
+            echo "  - Package Path: ${PACKAGE_PATH}"
+        fi
+        echo ""
+
+        # Display all completed packages with their last item IDs
+        echo "All Completed Packages:"
+        while IFS= read -r line; do
+            PKG_NUM=$(echo "${line}" | sed -n 's/.*Package Completed:[[:space:]]*\([0-9]*\).*/\1/p')
+            ITEM_ID=$(echo "${line}" | sed -n "s/.*,\s*'\([^']*\)'\s*\].*/\1/p")
+            PKG_PATH=$(echo "${line}" | sed -n 's/.*\]\s*\(.*\)/\1/p')
+
+            if [ -n "${PKG_NUM}" ] && [ -n "${ITEM_ID}" ]; then
+                echo "  Package ${PKG_NUM}: Last Item = ${ITEM_ID}"
+                if [ -n "${PKG_PATH}" ]; then
+                    echo "    Path: ${PKG_PATH}"
+                fi
+            fi
+        done < "${TEMP_COMPLETED}"
+        echo ""
+    fi
+
+    # Cleanup temporary files
+    rm -f "${TEMP_COMPLETED}" "${TEMP_STARTED}"
+fi
+
+echo "============================================================================"
+echo "Analysis Complete"
+echo "============================================================================"
+echo ""
 echo "Check logs at: ${LOG_FOLDER}"
 echo "Export files at: ${BASE_FOLDER}"
 echo ""

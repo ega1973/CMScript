@@ -149,6 +149,155 @@ echo ===========================================================================
 echo Export completed successfully
 echo ============================================================================
 echo.
+
+REM ============================================================================
+REM Parse ETK log file for package information
+REM ============================================================================
+echo ============================================================================
+echo Analyzing ETK log file...
+echo ============================================================================
+echo.
+
+REM Find the ETK file in the log folder
+SET ETK_FILE=
+FOR %%F IN ("%LOG_FOLDER%\*.etk") DO (
+    SET ETK_FILE=%%F
+    GOTO :FoundETK
+)
+
+:FoundETK
+IF "%ETK_FILE%"=="" (
+    echo Warning: No ETK file found in %LOG_FOLDER%
+    echo Skipping package analysis
+    GOTO :EndAnalysis
+)
+
+IF NOT EXIST "%ETK_FILE%" (
+    echo Warning: No ETK file found in %LOG_FOLDER%
+    echo Skipping package analysis
+    GOTO :EndAnalysis
+)
+
+echo Found ETK file: %ETK_FILE%
+echo.
+
+REM Create temporary files for processing
+SET TEMP_COMPLETED=%TEMP%\etk_completed_%RANDOM%.txt
+SET TEMP_STARTED=%TEMP%\etk_started_%RANDOM%.txt
+
+REM Extract package information
+findstr /C:"Package Completed:" "%ETK_FILE%" > "%TEMP_COMPLETED%" 2>nul
+findstr /C:"Package Started:" "%ETK_FILE%" > "%TEMP_STARTED%" 2>nul
+
+REM Count lines in files
+SET COMPLETED_COUNT=0
+SET STARTED_COUNT=0
+
+FOR /F %%A IN ('type "%TEMP_COMPLETED%" 2^>nul ^| find /c /v ""') DO SET COMPLETED_COUNT=%%A
+FOR /F %%A IN ('type "%TEMP_STARTED%" 2^>nul ^| find /c /v ""') DO SET STARTED_COUNT=%%A
+
+echo Package Summary:
+echo   - Packages Started: %STARTED_COUNT%
+echo   - Packages Completed: %COMPLETED_COUNT%
+echo.
+
+REM Check for incomplete packages
+SET /A INCOMPLETE=STARTED_COUNT-COMPLETED_COUNT
+IF %INCOMPLETE% GTR 0 (
+    echo WARNING: Found %INCOMPLETE% incomplete package^(s^)
+    echo.
+
+    REM Extract the last started package number
+    FOR /F "tokens=*" %%L IN (%TEMP_STARTED%) DO SET LAST_STARTED_LINE=%%L
+    FOR /F "tokens=3" %%N IN ("!LAST_STARTED_LINE!") DO SET LAST_STARTED=%%N
+
+    echo Last package started: !LAST_STARTED!
+    echo This package did not complete ^(possible error or interruption^)
+    echo.
+)
+
+REM Display last completed package and its last item ID
+IF %COMPLETED_COUNT% GTR 0 (
+    echo Last Completed Package Details:
+
+    REM Get the last completed line
+    FOR /F "tokens=*" %%L IN (%TEMP_COMPLETED%) DO SET LAST_COMPLETED_LINE=%%L
+
+    REM Extract package number (after "Package Completed:" and before ":")
+    FOR /F "tokens=3 delims=: " %%N IN ("!LAST_COMPLETED_LINE!") DO SET PACKAGE_NUM=%%N
+
+    REM Extract the last item ID (between the last single quote pair before ']')
+    REM This is complex in batch, so we'll use a simpler approach
+    SET LINE=!LAST_COMPLETED_LINE!
+
+    REM Find the last item ID - it's between quotes after the last comma before ']'
+    FOR /F "tokens=*" %%A IN ("!LINE!") DO (
+        SET TEMP_LINE=%%A
+        REM Remove everything up to and including the opening bracket
+        FOR /F "tokens=2 delims=[" %%B IN ("!TEMP_LINE!") DO SET TEMP_LINE=%%B
+        REM Remove everything after and including the closing bracket
+        FOR /F "tokens=1 delims=]" %%C IN ("!TEMP_LINE!") DO SET ITEMS_PART=%%C
+        REM Get the last item (after the last comma)
+        FOR /F "tokens=* delims=," %%D IN ("!ITEMS_PART!") DO SET LAST_PART=%%D
+        REM Find items separated by comma and get the last one
+        SET ITEM_COUNTER=0
+        FOR %%E IN (!ITEMS_PART!) DO (
+            SET LAST_ITEM_RAW=%%E
+            SET /A ITEM_COUNTER+=1
+        )
+        REM Remove quotes and spaces from the item
+        SET LAST_ITEM_ID=!LAST_ITEM_RAW:'=!
+        SET LAST_ITEM_ID=!LAST_ITEM_ID: =!
+        SET LAST_ITEM_ID=!LAST_ITEM_ID:,=!
+    )
+
+    REM Extract the path (everything after ']')
+    FOR /F "tokens=2 delims=]" %%P IN ("!LAST_COMPLETED_LINE!") DO SET PACKAGE_PATH=%%P
+
+    echo   - Package Number: !PACKAGE_NUM!
+    echo   - Last Item ID: !LAST_ITEM_ID!
+    IF NOT "!PACKAGE_PATH!"=="" (
+        echo   - Package Path:!PACKAGE_PATH!
+    )
+    echo.
+
+    REM Display all completed packages
+    echo All Completed Packages:
+    FOR /F "usebackq tokens=*" %%L IN ("%TEMP_COMPLETED%") DO (
+        SET COMP_LINE=%%L
+
+        REM Extract package number
+        FOR /F "tokens=3 delims=: " %%N IN ("!COMP_LINE!") DO SET PKG_NUM=%%N
+
+        REM Extract last item ID (simplified extraction)
+        FOR /F "tokens=2 delims=[" %%B IN ("!COMP_LINE!") DO SET TEMP_ITEMS=%%B
+        FOR /F "tokens=1 delims=]" %%C IN ("!TEMP_ITEMS!") DO SET ITEMS_ONLY=%%C
+
+        REM Get the last element
+        SET ITEM_RAW=
+        FOR %%E IN (!ITEMS_ONLY!) DO SET ITEM_RAW=%%E
+        SET ITEM_ID=!ITEM_RAW:'=!
+        SET ITEM_ID=!ITEM_ID: =!
+        SET ITEM_ID=!ITEM_ID:,=!
+
+        IF NOT "!PKG_NUM!"=="" (
+            IF NOT "!ITEM_ID!"=="" (
+                echo   Package !PKG_NUM!: Last Item = !ITEM_ID!
+            )
+        )
+    )
+    echo.
+)
+
+REM Cleanup temporary files
+IF EXIST "%TEMP_COMPLETED%" DEL /Q "%TEMP_COMPLETED%"
+IF EXIST "%TEMP_STARTED%" DEL /Q "%TEMP_STARTED%"
+
+:EndAnalysis
+echo ============================================================================
+echo Analysis Complete
+echo ============================================================================
+echo.
 echo Check logs at: %LOG_FOLDER%
 echo Export files at: %BASE_FOLDER%
 echo.

@@ -13,7 +13,10 @@ Both scripts automatically:
 1. Create the required folder structure (base folder and log subfolder)
 2. Configure the CLASSPATH with all necessary IBM DB2 Content Manager libraries
 3. Execute the TExportManagerICM Java tool with specified parameters
-4. Provide detailed output and error handling
+4. Parse ETK log files to analyze package completion status
+5. Extract and display last item IDs from completed packages
+6. Identify incomplete packages (started but not completed)
+7. Provide detailed output and error handling
 
 ## Prerequisites
 
@@ -89,11 +92,70 @@ The scripts use these default credentials (can be modified in the script):
 ### Successful Export
 - Export files will be created in the base folder
 - Log files will be created in the log subfolder
+- ETK log file analysis showing:
+  - Number of packages started and completed
+  - Warning if packages were started but not completed
+  - Last completed package number and its last item ID
+  - List of all completed packages with their last item IDs
+  - Package paths (if available)
 - Success message with paths displayed
 
 ### Failed Export
 - Error message with error code displayed
 - Check log files for detailed error information
+
+## ETK Log File Analysis
+
+After the export completes successfully, both scripts automatically analyze the ETK log file generated in the log folder. The analysis provides:
+
+### Package Status Information
+- **Packages Started**: Total number of packages that began processing
+- **Packages Completed**: Total number of packages that finished successfully
+- **Incomplete Packages**: Warning if any packages started but didn't complete (indicating errors or interruption)
+
+### Item ID Extraction
+For each completed package, the scripts extract:
+- **Package Number**: The sequential package number
+- **Last Item ID**: The last item ID processed in that package (e.g., 'A1001001A13C01A83636I46210')
+- **Package Path**: The file system path where the package was stored (if available)
+
+### Example Output
+```
+============================================================================
+Analyzing ETK log file...
+============================================================================
+
+Found ETK file: G:\007_Clientes_Fac_RI\log\export_007ClientesFacRI.etk
+
+Package Summary:
+  - Packages Started: 833
+  - Packages Completed: 832
+
+WARNING: Found 1 incomplete package(s)
+
+Last package started: 833
+This package did not complete (possible error or interruption)
+
+Last Completed Package Details:
+  - Package Number: 832
+  - Last Item ID: A1001001A13C01A83636I46210
+  - Package Path: G:\007_Clientes_Fac_RI\masterPackage\package832
+
+All Completed Packages:
+  Package 1: Last Item = A1001001A13C01A82500G59521
+    Path: G:\007_Clientes_Fac_RI\masterPackage\package1
+  Package 2: Last Item = A1001001A13C01A82501G59522
+    Path: G:\007_Clientes_Fac_RI\masterPackage\package2
+  ...
+  Package 832: Last Item = A1001001A13C01A83636I46210
+    Path: G:\007_Clientes_Fac_RI\masterPackage\package832
+```
+
+### Understanding the Results
+- If "Packages Started" equals "Packages Completed", all packages finished successfully
+- If there are incomplete packages, check the ETK log file for error messages
+- The last item ID can be used to resume exports or verify data integrity
+- Package paths show where exported data is stored
 
 ## Customization
 
@@ -188,6 +250,12 @@ export_icm.bat 007ClientesFacRI G:\007_Clientes_Fac_RI "V03206007002D"
    - Check log files in the log subfolder
    - Verify itemtype exists in the system
    - Ensure sufficient disk space
+
+6. **ETK file analysis issues**
+   - If no ETK file is found, the export may have failed before creating logs
+   - Incomplete packages indicate the export was interrupted or encountered errors
+   - Check the ETK file directly for detailed error messages
+   - The ETK file is a plain text file that can be opened with any text editor
 
 ## Support
 
