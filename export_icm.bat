@@ -189,13 +189,37 @@ SET _LOG_FOLDER=%_BASE_FOLDER%\log
 SET ETK_FILE=%_LOG_FOLDER%\%_EXPORT_NAME%.etk
 SET LAST_ITEMID=
 IF EXIST "%ETK_FILE%" (
-    for /f "usebackq tokens=*" %%a in ("%ETK_FILE%") do (
-        SET LAST_LINE=%%a
+    REM Look for the last "Package Completed:" line
+    REM Format: Package Completed:  2814    : '291     ' ('A1001001A14D24B72939B49768', 'A1001001A20B28B71115J61199'] G:\007_Clientes_Fac_RI\masterPackage\package2814
+    REM We need to extract the LAST itemid from the tuple (the one before '])
+    SET LAST_COMPLETED_LINE=
+    FOR /F "usebackq tokens=*" %%L IN (`findstr /C:"Package Completed:" "%ETK_FILE%"`) DO SET LAST_COMPLETED_LINE=%%L
+
+    IF NOT "!LAST_COMPLETED_LINE!"=="" (
+        REM Extract the last ItemID from the tuple
+        REM Remove everything up to and including the opening bracket
+        FOR /F "tokens=2 delims=[" %%B IN ("!LAST_COMPLETED_LINE!") DO SET TEMP_LINE=%%B
+        REM Remove everything after and including the closing bracket
+        FOR /F "tokens=1 delims=]" %%C IN ("!TEMP_LINE!") DO SET ITEMS_PART=%%C
+        REM Get the last item (after the last comma)
+        SET ITEM_RAW=
+        FOR %%E IN (!ITEMS_PART!) DO SET ITEM_RAW=%%E
+        REM Remove quotes, spaces, and commas from the item
+        SET LAST_ITEMID=!ITEM_RAW:'=!
+        SET LAST_ITEMID=!LAST_ITEMID: =!
+        SET LAST_ITEMID=!LAST_ITEMID:,=!
     )
-    REM Extract itemid from the last line (format: <itemid>...</itemid>)
-    for /f "tokens=2 delims=<>" %%a in ("!LAST_LINE!") do (
-        if "%%a" NEQ "itemid" (
-            SET LAST_ITEMID=%%a
+
+    REM Fallback: try XML format if Package Completed format didn't work
+    IF "!LAST_ITEMID!"=="" (
+        for /f "usebackq tokens=*" %%a in ("%ETK_FILE%") do (
+            SET LAST_LINE=%%a
+        )
+        REM Extract itemid from XML tags (format: <itemid>...</itemid>)
+        for /f "tokens=2 delims=<>" %%a in ("!LAST_LINE!") do (
+            if "%%a" NEQ "itemid" (
+                SET LAST_ITEMID=%%a
+            )
         )
     )
 )
@@ -396,22 +420,89 @@ echo.
 REM Create temporary files for processing
 SET TEMP_COMPLETED=%TEMP%\etk_completed_%RANDOM%.txt
 SET TEMP_STARTED=%TEMP%\etk_started_%RANDOM%.txt
+SET TEMP_FAILURES=%TEMP%\etk_failures_%RANDOM%.txt
 
 REM Extract package information
 findstr /C:"Package Completed:" "%ETK_FILE%" > "%TEMP_COMPLETED%" 2>nul
 findstr /C:"Package Started:" "%ETK_FILE%" > "%TEMP_STARTED%" 2>nul
+findstr /C:"Failure at package-level:" /C:"Failure at master-level:" "%ETK_FILE%" > "%TEMP_FAILURES%" 2>nul
 
 REM Count lines in files
 SET COMPLETED_COUNT=0
 SET STARTED_COUNT=0
+SET FAILURE_COUNT=0
 
 FOR /F %%A IN ('type "%TEMP_COMPLETED%" 2^>nul ^| find /c /v ""') DO SET COMPLETED_COUNT=%%A
 FOR /F %%A IN ('type "%TEMP_STARTED%" 2^>nul ^| find /c /v ""') DO SET STARTED_COUNT=%%A
+FOR /F %%A IN ('type "%TEMP_FAILURES%" 2^>nul ^| find /c /v ""') DO SET FAILURE_COUNT=%%A
+
+REM Check if export completed successfully
+SET EXPORT_FINISHED=0
+SET SUMMARY_COMPLETED=0
+findstr /C:"Completed All Packages:" "%ETK_FILE%" >nul 2>&1 && SET EXPORT_FINISHED=1
+findstr /C:"Completed Writing Summary:" "%ETK_FILE%" >nul 2>&1 && SET SUMMARY_COMPLETED=1
+
+echo Export Status:
+IF %EXPORT_FINISHED% EQU 1 IF %SUMMARY_COMPLETED% EQU 1 (
+    echo   STATUS: [OK] COMPLETED SUCCESSFULLY
+    FOR /F "usebackq tokens=2,* delims=:" %%D IN (`findstr /C:"Completed All Packages:" "%ETK_FILE%"`) DO (
+        echo   Completion Date:%%D:%%E
+    )
+) ELSE IF %FAILURE_COUNT% GTR 0 (
+    echo   STATUS: [X] FAILED ^(errors detected^)
+) ELSE IF %STARTED_COUNT% GTR %COMPLETED_COUNT% (
+    echo   STATUS: [!] INCOMPLETE ^(process interrupted^)
+) ELSE (
+    echo   STATUS: [!] IN PROGRESS
+)
+echo.
 
 echo Package Summary:
 echo   - Packages Started: %STARTED_COUNT%
 echo   - Packages Completed: %COMPLETED_COUNT%
+IF %FAILURE_COUNT% GTR 0 (
+    echo   - Failures Detected: %FAILURE_COUNT%
+)
 echo.
+
+REM Check for failures
+IF %FAILURE_COUNT% GTR 0 (
+    echo ============================================================================
+    echo ERRORS DETECTED IN EXPORT
+    echo ============================================================================
+    echo.
+    echo Found %FAILURE_COUNT% failure message^(s^) in the ETK file:
+    echo.
+
+    REM Display first 5 failures (to avoid overwhelming output)
+    SET FAIL_COUNTER=0
+    FOR /F "usebackq tokens=*" %%F IN ("%TEMP_FAILURES%") DO (
+        IF !FAIL_COUNTER! LSS 5 (
+            SET FAILURE_LINE=%%F
+            echo !FAILURE_LINE! | findstr /C:"package-level" >nul 2>&1
+            IF !ERRORLEVEL! EQU 0 (
+                echo   [X] Package-level failure:
+            ) ELSE (
+                echo   [X] Master-level failure:
+            )
+            REM Display first 200 chars of error (batch limitation)
+            SET ERROR_MSG=!FAILURE_LINE:~0,200!
+            echo     !ERROR_MSG!
+            echo.
+            SET /A FAIL_COUNTER+=1
+        )
+    )
+
+    IF %FAILURE_COUNT% GTR 5 (
+        SET /A MORE_ERRORS=FAILURE_COUNT-5
+        echo   ... and !MORE_ERRORS! more error^(s^)
+        echo.
+    )
+
+    echo Full error details can be found in: %ETK_FILE%
+    echo ============================================================================
+    echo.
+)
 
 REM Check for incomplete packages
 SET /A INCOMPLETE=STARTED_COUNT-COMPLETED_COUNT
@@ -425,6 +516,15 @@ IF %INCOMPLETE% GTR 0 (
 
     echo Last package started: !LAST_STARTED!
     echo This package did not complete ^(possible error or interruption^)
+
+    REM Check for retries (multiple starts of same package)
+    IF NOT "!LAST_STARTED!"=="" (
+        SET RETRY_COUNT=0
+        FOR /F %%R IN ('findstr /C:"Package Started:  !LAST_STARTED!" "%TEMP_STARTED%" ^| find /c /v ""') DO SET RETRY_COUNT=%%R
+        IF !RETRY_COUNT! GTR 1 (
+            echo Package !LAST_STARTED! was attempted !RETRY_COUNT! times ^(retries detected^)
+        )
+    )
     echo.
 )
 
@@ -473,28 +573,43 @@ IF %COMPLETED_COUNT% GTR 0 (
     )
     echo.
 
-    REM Display all completed packages
-    echo All Completed Packages:
+    REM If export is incomplete, show resume information
+    IF %EXPORT_FINISHED% EQU 0 IF NOT "!LAST_ITEM_ID!"=="" (
+        echo RESUME INFORMATION:
+        echo   To resume this export from the last completed item, the script will
+        echo   automatically use ItemID: !LAST_ITEM_ID!
+        echo   Simply run the script again with the same parameters.
+        echo.
+    )
+
+    REM Display recently completed packages (last 10)
+    echo Recently Completed Packages ^(last 10^):
+    SET PKG_COUNTER=0
+    SET /A TARGET_START=COMPLETED_COUNT-10
+    IF %TARGET_START% LSS 0 SET TARGET_START=0
     FOR /F "usebackq tokens=*" %%L IN ("%TEMP_COMPLETED%") DO (
-        SET COMP_LINE=%%L
+        SET /A PKG_COUNTER+=1
+        IF !PKG_COUNTER! GTR %TARGET_START% (
+            SET COMP_LINE=%%L
 
-        REM Extract package number
-        FOR /F "tokens=3 delims=: " %%N IN ("!COMP_LINE!") DO SET PKG_NUM=%%N
+            REM Extract package number
+            FOR /F "tokens=3 delims=: " %%N IN ("!COMP_LINE!") DO SET PKG_NUM=%%N
 
-        REM Extract last item ID (simplified extraction)
-        FOR /F "tokens=2 delims=[" %%B IN ("!COMP_LINE!") DO SET TEMP_ITEMS=%%B
-        FOR /F "tokens=1 delims=]" %%C IN ("!TEMP_ITEMS!") DO SET ITEMS_ONLY=%%C
+            REM Extract last item ID (simplified extraction)
+            FOR /F "tokens=2 delims=[" %%B IN ("!COMP_LINE!") DO SET TEMP_ITEMS=%%B
+            FOR /F "tokens=1 delims=]" %%C IN ("!TEMP_ITEMS!") DO SET ITEMS_ONLY=%%C
 
-        REM Get the last element
-        SET ITEM_RAW=
-        FOR %%E IN (!ITEMS_ONLY!) DO SET ITEM_RAW=%%E
-        SET ITEM_ID=!ITEM_RAW:'=!
-        SET ITEM_ID=!ITEM_ID: =!
-        SET ITEM_ID=!ITEM_ID:,=!
+            REM Get the last element
+            SET ITEM_RAW=
+            FOR %%E IN (!ITEMS_ONLY!) DO SET ITEM_RAW=%%E
+            SET ITEM_ID=!ITEM_RAW:'=!
+            SET ITEM_ID=!ITEM_ID: =!
+            SET ITEM_ID=!ITEM_ID:,=!
 
-        IF NOT "!PKG_NUM!"=="" (
-            IF NOT "!ITEM_ID!"=="" (
-                echo   Package !PKG_NUM!: Last Item = !ITEM_ID!
+            IF NOT "!PKG_NUM!"=="" (
+                IF NOT "!ITEM_ID!"=="" (
+                    echo   Package !PKG_NUM!: Last Item = !ITEM_ID!
+                )
             )
         )
     )
@@ -504,6 +619,7 @@ IF %COMPLETED_COUNT% GTR 0 (
     REM Cleanup temporary files
     IF EXIST "%TEMP_COMPLETED%" DEL /Q "%TEMP_COMPLETED%"
     IF EXIST "%TEMP_STARTED%" DEL /Q "%TEMP_STARTED%"
+    IF EXIST "%TEMP_FAILURES%" DEL /Q "%TEMP_FAILURES%"
 
     :EndAnalysis
     echo ============================================================================
