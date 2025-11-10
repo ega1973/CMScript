@@ -174,6 +174,7 @@ set CLASSPATH=%CLASSPATH%;%DB2_HOME%\lib\cmblog4j81.jar
 set CLASSPATH=%CLASSPATH%;%DB2_HOME%\lib\log4j-1.2.8.jar
 set CLASSPATH=%CLASSPATH%;%DB2_HOME%\lib\cmbsdk81.jar
 set CLASSPATH=%CLASSPATH%;%DB2_HOME%\lib\cmbwas81.jar
+set CLASSPATH=%CLASSPATH%;%DB2_HOME%\samples\java\icm\Sample1
 
 echo CLASSPATH configured successfully
 echo.

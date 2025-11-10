@@ -195,6 +195,7 @@ export CLASSPATH="${CLASSPATH}:${IBM_HOME}/lib/cmblog4j81.jar"
 export CLASSPATH="${CLASSPATH}:${IBM_HOME}/lib/log4j-1.2.8.jar"
 export CLASSPATH="${CLASSPATH}:${IBM_HOME}/lib/cmbsdk81.jar"
 export CLASSPATH="${CLASSPATH}:${IBM_HOME}/lib/cmbwas81.jar"
+export CLASSPATH="${CLASSPATH}:${IBM_HOME}/icm/Sample1"
 
 echo "CLASSPATH configured successfully"
 echo ""
