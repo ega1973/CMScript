@@ -88,8 +88,8 @@ IF EXIST "%~1" (
     SET RESUME_LOG=%~2\log\export_resume.log
 
     REM Create folders first to avoid "path not found" errors
-    IF NOT EXIST "%BASE_FOLDER%" mkdir "%BASE_FOLDER%"
-    IF NOT EXIST "%LOG_FOLDER%" mkdir "%LOG_FOLDER%"
+    IF NOT EXIST "!BASE_FOLDER!" mkdir "!BASE_FOLDER!" 2>nul
+    IF NOT EXIST "!LOG_FOLDER!" mkdir "!LOG_FOLDER!" 2>nul
 
     REM Create temporary file with three columns in log folder
     SET ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp_%RANDOM%.txt
@@ -254,7 +254,7 @@ SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name base_folder itemtype)
-for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
+for /f "usebackq tokens=1,2,3,*" %%a in ("!ITEMTYPE_LIST_FILE!") do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
