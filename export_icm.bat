@@ -33,7 +33,7 @@ IF "%~1"=="" (
     echo   Single itemtype: %0 ^<export_name^> ^<base_folder^> ^<itemtype^>
     echo   Multiple itemtypes: %0 ^<itemtype_list_file^>
     echo.
-    echo itemtypes.txt format (space or tab separated):
+    echo itemtypes.txt format ^(space or tab separated^):
     echo   ^<export_name^> ^<base_folder^> ^<itemtype^>
     echo   007ClientesFacRI G:\007_Clientes_Fac_RI V03206007002D
     echo   007ClientesConstruya G:\007_Clientes_Construya V03206007003D
