@@ -142,14 +142,14 @@ function Get-LastItemIdFromETK {
             Write-Verbose "Last completed line: $lastCompletedLine"
 
             # Extract ItemID from format: Package Completed:  2814    : '291     ' ('A1001001A14D24B72939B49768', 'A1001001A20B28B71115J61199'] G:\...
-            # We need the last ID before the ']'
-            if ($lastCompletedLine -match '\[([^\]]+)\]') {
+            # We need the last ID before the ']' - note format uses ( to open and ] to close
+            if ($lastCompletedLine -match '\(([^\]]+)\]') {
                 $itemsPart = $matches[1]
                 # Split by comma and get last item
                 $items = $itemsPart -split ','
                 $lastItem = $items[-1].Trim()
-                # Remove quotes and spaces
-                $lastItemId = $lastItem -replace "[' ]", ""
+                # Remove quotes, spaces, and commas
+                $lastItemId = $lastItem -replace "[', ]", ""
             }
         }
 
@@ -515,11 +515,11 @@ function Show-ETKAnalysis {
             Write-Host "  - Package Number: $packageNum"
         }
 
-        # Extract last item ID
-        if ($lastCompletedLine -match '\[([^\]]+)\]') {
+        # Extract last item ID (format uses ( to open and ] to close)
+        if ($lastCompletedLine -match '\(([^\]]+)\]') {
             $itemsPart = $matches[1]
             $items = $itemsPart -split ','
-            $lastItem = $items[-1].Trim() -replace "[' ]", ""
+            $lastItem = $items[-1].Trim() -replace "[', ]", ""
             Write-Host "  - Last Item ID: $lastItem"
 
             # Show resume info if export is incomplete
@@ -552,10 +552,11 @@ function Show-ETKAnalysis {
             if ($line -match "Package Completed:\s+(\d+)") {
                 $pkgNum = $matches[1]
 
-                if ($line -match '\[([^\]]+)\]') {
+                # Extract last item ID (format uses ( to open and ] to close)
+                if ($line -match '\(([^\]]+)\]') {
                     $itemsPart = $matches[1]
                     $items = $itemsPart -split ','
-                    $lastItem = $items[-1].Trim() -replace "[' ]", ""
+                    $lastItem = $items[-1].Trim() -replace "[', ]", ""
 
                     Write-Host "  Package ${pkgNum}: Last Item = $lastItem"
                 }
@@ -607,39 +608,71 @@ function Process-ItemType {
 
     Write-Log -Message "Processing itemtype: $ItemType" -LogFile $progressLog -NoConsole
 
-    # Check if already completed
-    if (Test-ItemTypeCompleted -ItemType $ItemType -ProgressLog $progressLog) {
-        Write-Host ""
-        Write-Host "INFO: Itemtype $ItemType was already completed. Skipping..." -ForegroundColor Yellow
-        Write-Log -Message "SKIPPED (already completed): $ItemType" -LogFile $progressLog -NoConsole
-        return 0
+    # Check if already completed - but verify with ETK file
+    # Don't trust progress log alone, as export might have been interrupted
+    $markedComplete = Test-ItemTypeCompleted -ItemType $ItemType -ProgressLog $progressLog
+    if ($markedComplete) {
+        # Verify export is actually complete by checking ETK file
+        $etkFile = Join-Path $logFolder "$ExportName.etk"
+        $actuallyComplete = $false
+
+        if (Test-Path $etkFile) {
+            $content = Get-Content $etkFile
+            $exportFinished = $content | Where-Object { $_ -match "Completed All Packages:" }
+            $actuallyComplete = ($exportFinished -ne $null)
+        }
+
+        if ($actuallyComplete) {
+            Write-Host ""
+            Write-Host "INFO: Itemtype $ItemType was already completed. Skipping..." -ForegroundColor Yellow
+            Write-Log -Message "SKIPPED (already completed): $ItemType" -LogFile $progressLog -NoConsole
+            return 0
+        } else {
+            Write-Host ""
+            Write-Host "WARNING: Progress log shows complete, but ETK shows incomplete. Continuing..." -ForegroundColor Yellow
+            Write-Log -Message "WARNING: Marked complete but ETK incomplete, continuing: $ItemType" -LogFile $progressLog -NoConsole
+        }
     }
 
     # Check for resume point
+    Write-Host "DEBUG: Checking for resume point..." -ForegroundColor Cyan
     $resumeItemId = Get-ResumeItemId -ItemType $ItemType -ResumeLog $resumeLog
     if ($resumeItemId) {
+        Write-Host "DEBUG: Found resume point in resume log: $resumeItemId" -ForegroundColor Cyan
         Write-Log -Message "RESUMING from ItemID (from resume log): $resumeItemId" -LogFile $progressLog
     } else {
+        Write-Host "DEBUG: No resume log found, checking ETK file..." -ForegroundColor Cyan
         # Check if there's an incomplete export in the ETK file
         # This handles cases where the export was interrupted without a proper failure
         $lastItemId = Get-LastItemIdFromETK -ExportName $ExportName -BaseFolder $BaseFolder
+        Write-Host "DEBUG: Last ItemID from ETK: $lastItemId" -ForegroundColor Cyan
         if ($lastItemId) {
             # Check if export is actually incomplete (not finished)
             $etkFile = Join-Path $logFolder "$ExportName.etk"
+            Write-Host "DEBUG: Checking ETK file: $etkFile" -ForegroundColor Cyan
             if (Test-Path $etkFile) {
                 $content = Get-Content $etkFile
                 $exportFinished = $content | Where-Object { $_ -match "Completed All Packages:" }
+                Write-Host "DEBUG: Export finished marker found: $($exportFinished -ne $null)" -ForegroundColor Cyan
 
                 if (-not $exportFinished) {
                     # Export is incomplete - resume from last item
                     $resumeItemId = $lastItemId
+                    Write-Host "DEBUG: Setting resumeItemId = $resumeItemId" -ForegroundColor Cyan
                     Write-Log -Message "RESUMING from ItemID (detected incomplete export): $resumeItemId" -LogFile $progressLog
                     Write-Host ""
                     Write-Host "INFO: Detected incomplete export. Resuming from ItemID: $resumeItemId" -ForegroundColor Yellow
+                } else {
+                    Write-Host "DEBUG: Export is complete, not resuming" -ForegroundColor Cyan
                 }
+            } else {
+                Write-Host "DEBUG: ETK file not found" -ForegroundColor Cyan
             }
+        } else {
+            Write-Host "DEBUG: No ItemID found in ETK file" -ForegroundColor Cyan
         }
     }
+    Write-Host "DEBUG: Final resumeItemId value: '$resumeItemId'" -ForegroundColor Cyan
 
     # Execute export
     $exitCode = Invoke-ICMExport -ExportName $ExportName `
