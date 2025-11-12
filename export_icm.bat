@@ -92,10 +92,10 @@ IF EXIST "%~1" (
     IF NOT EXIST "!LOG_FOLDER!" mkdir "!LOG_FOLDER!" 2>nul
 
     REM Create temporary file with three columns in log folder
-    REM Use tab delimiter to avoid issues with spaces and colons in paths
+    REM Use pipe delimiter to avoid issues with spaces and colons in paths
     SET ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp_%RANDOM%.txt
     >!ITEMTYPE_LIST_FILE! (
-        echo !EXPORT_NAME!	!BASE_FOLDER!	!ITEMTYPE_PARAM!
+        echo !EXPORT_NAME!^|!BASE_FOLDER!^|!ITEMTYPE_PARAM!
     )
 
     REM Debug: show what was written to temp file
@@ -262,10 +262,9 @@ echo.
 SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
-REM Read itemtypes from file (format: export_name<tab>base_folder<tab>itemtype)
-REM Store the file path in a temporary variable for FOR loop
-set "TEMP_FILE_PATH=!ITEMTYPE_LIST_FILE!"
-for /f "usebackq delims=	 tokens=1,2,3,*" %%a in ("%TEMP_FILE_PATH%") do (
+REM Read itemtypes from file (format: export_name|base_folder|itemtype)
+REM Use findstr to read the file content and avoid FOR loop file path parsing issues
+for /f "delims=| tokens=1,2,3,*" %%a in ('type "!ITEMTYPE_LIST_FILE!"') do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
