@@ -255,10 +255,18 @@ function Set-ICMClasspath {
     )
 
     # Preserve existing CLASSPATH if any, then append ICM classpath
+    # This matches batch file behavior: set CLASSPATH=%CLASSPATH%;new_paths
     $existingClasspath = $env:CLASSPATH
+    $existingEntriesCount = 0
+
     if ($existingClasspath) {
         Write-Host "Existing CLASSPATH found, appending ICM libraries..." -ForegroundColor Yellow
+        # Existing CLASSPATH comes FIRST (same as batch: %CLASSPATH%;new_items)
         $env:CLASSPATH = $existingClasspath + ";" + ($icmClasspathItems -join ";")
+        # Count existing entries
+        $existingEntriesCount = ($existingClasspath -split ";").Count
+        Write-Host "  Existing entries: $existingEntriesCount"
+        Write-Host "  Adding ICM entries: $($icmClasspathItems.Count)"
     } else {
         Write-Host "No existing CLASSPATH, creating new one..."
         $env:CLASSPATH = $icmClasspathItems -join ";"
@@ -278,13 +286,23 @@ function Set-ICMClasspath {
     $entryNumber = 1
     foreach ($entry in $classpathEntries) {
         if ($entry) {
-            Write-Host "  [$entryNumber] $entry"
+            # Mark entries that came from existing CLASSPATH
+            if ($existingEntriesCount -gt 0 -and $entryNumber -le $existingEntriesCount) {
+                Write-Host "  [$entryNumber] $entry" -ForegroundColor DarkGray -NoNewline
+                Write-Host " (from existing CLASSPATH)" -ForegroundColor DarkYellow
+            } else {
+                Write-Host "  [$entryNumber] $entry"
+            }
             $entryNumber++
         }
     }
 
     Write-Host ("=" * 76) -ForegroundColor Cyan
-    Write-Host "Total classpath entries: $($entryNumber - 1)" -ForegroundColor Cyan
+    if ($existingEntriesCount -gt 0) {
+        Write-Host "Total: $($entryNumber - 1) entries ($existingEntriesCount existing + $($icmClasspathItems.Count) ICM)" -ForegroundColor Cyan
+    } else {
+        Write-Host "Total classpath entries: $($entryNumber - 1)" -ForegroundColor Cyan
+    }
     Write-Host ""
 
     # Verify critical paths exist
