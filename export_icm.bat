@@ -93,7 +93,7 @@ IF EXIST "%~1" (
 
     REM Create temporary file with three columns in log folder
     SET ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp_%RANDOM%.txt
-    (echo !EXPORT_NAME! !BASE_FOLDER! !ITEMTYPE_PARAM!)>"!ITEMTYPE_LIST_FILE!"
+    (echo !EXPORT_NAME! "!BASE_FOLDER!" !ITEMTYPE_PARAM!)>"!ITEMTYPE_LIST_FILE!"
 
     REM Debug: show what was written to temp file
     echo DEBUG: Temp file contents:
@@ -264,7 +264,7 @@ REM Store the file path in a temporary variable for FOR loop
 set "TEMP_FILE_PATH=!ITEMTYPE_LIST_FILE!"
 for /f "usebackq tokens=1,2,3,*" %%a in ("%TEMP_FILE_PATH%") do (
     SET CURRENT_EXPORT_NAME=%%a
-    SET CURRENT_BASE_FOLDER=%%b
+    SET CURRENT_BASE_FOLDER=%%~b
     SET CURRENT_ITEMTYPE=%%c
     SET SHOULD_PROCESS=1
 
