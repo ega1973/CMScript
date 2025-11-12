@@ -93,7 +93,8 @@ IF EXIST "%~1" (
 
     REM Create temporary file with three columns in log folder
     REM Use pipe delimiter to avoid issues with spaces and colons in paths
-    SET ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp_%RANDOM%.txt
+    REM Use fixed filename instead of random for testing
+    SET ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp.txt
     >!ITEMTYPE_LIST_FILE! (
         echo !EXPORT_NAME!^|!BASE_FOLDER!^|!ITEMTYPE_PARAM!
     )
@@ -263,12 +264,10 @@ SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name|base_folder|itemtype)
-REM Call subroutine to process the file, passing path as parameter
-call :ProcessItemtypesFile "!ITEMTYPE_LIST_FILE!"
-goto :AfterProcessing
+REM Set regular variable for use in FOR loop (avoid delayed expansion issues)
+SET ITEMTYPE_FILE_FOR_LOOP=!ITEMTYPE_LIST_FILE!
 
-:ProcessItemtypesFile
-for /f "delims=| tokens=1,2,3,*" %%a in ('type %~1') do (
+for /f "delims=| tokens=1,2,3,*" %%a in ('type "%ITEMTYPE_FILE_FOR_LOOP%"') do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
@@ -400,9 +399,7 @@ for /f "delims=| tokens=1,2,3,*" %%a in ('type %~1') do (
         :SkipLine
     )
 )
-goto :eof
 
-:AfterProcessing
 REM ============================================================================
 REM Summary
 REM ============================================================================
