@@ -94,7 +94,7 @@ IF EXIST "%~1" (
     REM Create temporary file with three columns in log folder
     REM Use pipe delimiter to avoid issues with spaces and colons in paths
     REM Use fixed filename instead of random for testing
-    SET ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp.txt
+    SET "ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp.txt"
     >!ITEMTYPE_LIST_FILE! (
         echo !EXPORT_NAME!^|!BASE_FOLDER!^|!ITEMTYPE_PARAM!
     )
