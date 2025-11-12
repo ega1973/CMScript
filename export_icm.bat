@@ -265,7 +265,7 @@ SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name|base_folder|itemtype)
 REM Use PowerShell to parse the file and avoid batch FOR loop issues
-SET ITEMTYPE_FILE_FOR_LOOP=!ITEMTYPE_LIST_FILE!
+SET "ITEMTYPE_FILE_FOR_LOOP=!ITEMTYPE_LIST_FILE!"
 for /f "tokens=1,2,3 delims=|" %%a in ('powershell -NoProfile -Command "Get-Content '%ITEMTYPE_FILE_FOR_LOOP%'"') do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
