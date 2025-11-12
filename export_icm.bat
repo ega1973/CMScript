@@ -263,9 +263,8 @@ SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name|base_folder|itemtype)
-REM Store the file path in a temporary variable for FOR loop
-set "TEMP_FILE_PATH=!ITEMTYPE_LIST_FILE!"
-for /f "usebackq delims=| tokens=1,2,3,*" %%a in ("%TEMP_FILE_PATH%") do (
+REM Use findstr to read the file content and avoid FOR loop file path parsing issues
+for /f "delims=| tokens=1,2,3,*" %%a in ('type "!ITEMTYPE_LIST_FILE!"') do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
