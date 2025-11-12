@@ -122,7 +122,7 @@ For detailed debugging, run with `-Verbose`:
 
 ## Example CLASSPATH Output
 
-When you run the script, you'll see output like this:
+### When no existing CLASSPATH is set:
 
 ```
 ============================================================================
@@ -139,15 +139,47 @@ CURRENT CLASSPATH:
   [3] E:\IBM\db2cmv8\lib\cmb81.jar
   [4] E:\IBM\db2cmv8\lib\cmbcm81.jar
   ...
-  [27] E:\IBM\db2cmv8\samples\java\icm\Sample1
+  [22] E:\IBM\db2cmv8\lib\cmbsdk81.jar
+  [23] E:\IBM\db2cmv8\lib\cmbwas81.jar
 ============================================================================
-Total classpath entries: 27
+Total classpath entries: 23
 
 Verifying critical paths...
   [OK] E:\IBM\db2cmv8\lib\cmb81.jar
   [OK] E:\IBM\db2cmv8\lib\cmbicm81.jar
   [OK] c:\sqllib\JAVA\DB2JAVA.ZIP
 ```
+
+### When existing CLASSPATH is present:
+
+The script preserves your existing CLASSPATH and appends ICM libraries (matching batch behavior: `set CLASSPATH=%CLASSPATH%;new_paths`)
+
+```
+============================================================================
+Setting up CLASSPATH
+============================================================================
+Existing CLASSPATH found, appending ICM libraries...
+  Existing entries: 5
+  Adding ICM entries: 23
+
+CLASSPATH configured successfully!
+
+CURRENT CLASSPATH:
+============================================================================
+  [1] C:\MyApp\lib\something.jar (from existing CLASSPATH)
+  [2] C:\MyApp\lib\another.jar (from existing CLASSPATH)
+  [3] C:\MyApp\lib\third.jar (from existing CLASSPATH)
+  [4] C:\MyApp\lib\fourth.jar (from existing CLASSPATH)
+  [5] C:\MyApp\lib\fifth.jar (from existing CLASSPATH)
+  [6] E:\IBM\db2cmv8\cmgmt
+  [7] E:\IBM\db2cmv8\lib\cmbview81.jar
+  ...
+  [28] E:\IBM\db2cmv8\lib\cmbwas81.jar
+============================================================================
+Total: 28 entries (5 existing + 23 ICM)
+```
+
+**Important**: Existing CLASSPATH entries come FIRST, then ICM paths are appended. This matches the batch file behavior exactly.
 
 This makes it easy to verify that all required JARs are in the classpath and can be found by Java.
 

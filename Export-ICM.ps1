@@ -227,6 +227,7 @@ function Set-ICMClasspath {
     Write-Header "Setting up CLASSPATH"
 
     # Build the ICM-specific classpath items
+    # Matches the exact order and paths from the working batch script
     $icmClasspathItems = @(
         (Join-Path $script:DB2_HOME "cmgmt")
         (Join-Path $script:DB2_HOME "lib\cmbview81.jar")
@@ -246,22 +247,26 @@ function Set-ICMClasspath {
         (Join-Path $script:DB2_HOME "lib\cmbutilicm81.jar")
         (Join-Path $script:DB2_HOME "lib\icmrm81.jar")
         "c:\sqllib\JAVA\DB2JAVA.ZIP"
-        "C:\oracle\ora92\jdbc\lib\ojdbc14.jar"
-        "C:\oracle\ora92\jdbc\lib\nls_charset12.zip"
         (Join-Path $script:DB2_HOME "lib\xerces.jar")
-        "\java\ibmjndi.jar"
         (Join-Path $script:DB2_HOME "lib\cmblog4j81.jar")
         (Join-Path $script:DB2_HOME "lib\log4j-1.2.8.jar")
         (Join-Path $script:DB2_HOME "lib\cmbsdk81.jar")
         (Join-Path $script:DB2_HOME "lib\cmbwas81.jar")
-        (Join-Path $script:DB2_HOME "samples\java\icm\Sample1")
     )
 
     # Preserve existing CLASSPATH if any, then append ICM classpath
+    # This matches batch file behavior: set CLASSPATH=%CLASSPATH%;new_paths
     $existingClasspath = $env:CLASSPATH
+    $existingEntriesCount = 0
+
     if ($existingClasspath) {
         Write-Host "Existing CLASSPATH found, appending ICM libraries..." -ForegroundColor Yellow
+        # Existing CLASSPATH comes FIRST (same as batch: %CLASSPATH%;new_items)
         $env:CLASSPATH = $existingClasspath + ";" + ($icmClasspathItems -join ";")
+        # Count existing entries
+        $existingEntriesCount = ($existingClasspath -split ";").Count
+        Write-Host "  Existing entries: $existingEntriesCount"
+        Write-Host "  Adding ICM entries: $($icmClasspathItems.Count)"
     } else {
         Write-Host "No existing CLASSPATH, creating new one..."
         $env:CLASSPATH = $icmClasspathItems -join ";"
@@ -281,13 +286,23 @@ function Set-ICMClasspath {
     $entryNumber = 1
     foreach ($entry in $classpathEntries) {
         if ($entry) {
-            Write-Host "  [$entryNumber] $entry"
+            # Mark entries that came from existing CLASSPATH
+            if ($existingEntriesCount -gt 0 -and $entryNumber -le $existingEntriesCount) {
+                Write-Host "  [$entryNumber] $entry" -ForegroundColor DarkGray -NoNewline
+                Write-Host " (from existing CLASSPATH)" -ForegroundColor DarkYellow
+            } else {
+                Write-Host "  [$entryNumber] $entry"
+            }
             $entryNumber++
         }
     }
 
     Write-Host ("=" * 76) -ForegroundColor Cyan
-    Write-Host "Total classpath entries: $($entryNumber - 1)" -ForegroundColor Cyan
+    if ($existingEntriesCount -gt 0) {
+        Write-Host "Total: $($entryNumber - 1) entries ($existingEntriesCount existing + $($icmClasspathItems.Count) ICM)" -ForegroundColor Cyan
+    } else {
+        Write-Host "Total classpath entries: $($entryNumber - 1)" -ForegroundColor Cyan
+    }
     Write-Host ""
 
     # Verify critical paths exist
