@@ -94,12 +94,22 @@ After export completes, the script analyzes the `.etk` file and shows:
 
 ### 4. Color-Coded Output
 
-- **Green** - Success messages
+- **Green** - Success messages and verified paths
 - **Yellow** - Warnings and resume info
-- **Red** - Errors
-- **Cyan** - Command being executed
+- **Red** - Errors and missing files
+- **Cyan** - Headers and important information
+- **White/Gray** - Command details
 
-### 5. Verbose Mode
+### 5. CLASSPATH Verification
+
+The script now displays the complete CLASSPATH when it starts:
+- Lists every JAR and path being used (numbered for easy reference)
+- Verifies critical paths exist (shows [OK] or [MISSING])
+- Appends to existing CLASSPATH if one exists
+- Shows total number of classpath entries
+- Passes classpath explicitly to Java using `-classpath` argument
+
+### 6. Verbose Mode
 
 For detailed debugging, run with `-Verbose`:
 
@@ -110,6 +120,37 @@ For detailed debugging, run with `-Verbose`:
                  -Verbose
 ```
 
+## Example CLASSPATH Output
+
+When you run the script, you'll see output like this:
+
+```
+============================================================================
+Setting up CLASSPATH
+============================================================================
+No existing CLASSPATH, creating new one...
+
+CLASSPATH configured successfully!
+
+CURRENT CLASSPATH:
+============================================================================
+  [1] E:\IBM\db2cmv8\cmgmt
+  [2] E:\IBM\db2cmv8\lib\cmbview81.jar
+  [3] E:\IBM\db2cmv8\lib\cmb81.jar
+  [4] E:\IBM\db2cmv8\lib\cmbcm81.jar
+  ...
+  [27] E:\IBM\db2cmv8\samples\java\icm\Sample1
+============================================================================
+Total classpath entries: 27
+
+Verifying critical paths...
+  [OK] E:\IBM\db2cmv8\lib\cmb81.jar
+  [OK] E:\IBM\db2cmv8\lib\cmbicm81.jar
+  [OK] c:\sqllib\JAVA\DB2JAVA.ZIP
+```
+
+This makes it easy to verify that all required JARs are in the classpath and can be found by Java.
+
 ## Debugging
 
 ### Common Issues
@@ -118,11 +159,14 @@ For detailed debugging, run with `-Verbose`:
    - Solution: Set the environment variables as shown above
 
 2. **"File not found" for Java or JAR files**
-   - Solution: Update the paths in the Configuration section at the top of the script:
+   - Solution: Check the CLASSPATH output when the script starts
+   - Look for `[MISSING]` markers in red next to critical paths
+   - Update the paths in the Configuration section at the top of the script:
      ```powershell
      $script:JAVA_HOME = "E:\jdk1.6.0_26"  # Update this
      $script:DB2_HOME = "E:\IBM\db2cmv8"   # Update this
      ```
+   - Verify the numbered CLASSPATH entries point to the correct locations
 
 3. **Export fails with error code**
    - Check the `.etk` file in the log folder for detailed errors
@@ -154,6 +198,9 @@ Get-Help .\Export-ICM.ps1 -Examples
 | Verbose Logging | No | Yes (`-Verbose`) |
 | Parameter Validation | Manual | Built-in |
 | Help Documentation | Comments only | Built-in help |
+| CLASSPATH Display | No | Yes (numbered list) |
+| Path Verification | No | Yes (checks if files exist) |
+| Explicit Classpath | Uses env var only | Passes `-classpath` to Java |
 
 ## Advanced Usage
 
