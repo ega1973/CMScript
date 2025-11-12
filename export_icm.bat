@@ -264,9 +264,9 @@ SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name|base_folder|itemtype)
-REM Use PowerShell to parse the file and avoid batch FOR loop issues
+REM Use PowerShell to read env var and parse, avoiding batch path parsing
 SET "ITEMTYPE_FILE_FOR_LOOP=!ITEMTYPE_LIST_FILE!"
-for /f "tokens=1,2,3 delims=|" %%a in ('powershell -NoProfile -Command "Get-Content '%ITEMTYPE_FILE_FOR_LOOP%'"') do (
+for /f "tokens=1-3* delims=	" %%a in ('powershell -NoProfile -Command "$file = $env:ITEMTYPE_FILE_FOR_LOOP; $content = Get-Content $file; foreach($line in $content) { $parts = $line -split '\\|'; Write-Output ($parts[0] + [char]9 + $parts[1] + [char]9 + $parts[2]) }"') do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
