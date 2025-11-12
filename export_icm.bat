@@ -278,6 +278,42 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
             )
         )
 
+        REM Initialize progress log if needed
+        IF NOT EXIST "!CURRENT_PROGRESS_LOG!" (
+            echo Export Progress Log - Created: %DATE% %TIME% > "!CURRENT_PROGRESS_LOG!"
+            echo ============================================================================ >> "!CURRENT_PROGRESS_LOG!"
+        )
+
+        SET /A ITEMTYPE_COUNT+=1
+
+        echo.
+        echo ========================================================================
+        echo Processing Itemtype #!ITEMTYPE_COUNT!
+        echo Export Name: !CURRENT_EXPORT_NAME!
+        echo Base Folder: !CURRENT_BASE_FOLDER!
+        echo Itemtype: !CURRENT_ITEMTYPE!
+        echo Started: %DATE% %TIME%
+        echo ========================================================================
+
+        REM Log progress
+        echo [%DATE% %TIME%] Processing itemtype: !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
+
+        REM Check if this itemtype was already completed
+        findstr /C:"COMPLETED: !CURRENT_ITEMTYPE!" "!CURRENT_PROGRESS_LOG!" >nul 2>&1
+        IF !ERRORLEVEL! EQU 0 (
+            echo.
+            echo INFO: Itemtype !CURRENT_ITEMTYPE! was already completed. Skipping...
+            echo [%DATE% %TIME%] SKIPPED (already completed): !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
+            goto :SkipLine
+        )
+
+        REM Check for resume point
+        SET RESUME_ITEMID=
+        IF EXIST "!CURRENT_RESUME_LOG!" (
+            for /f "usebackq tokens=1,2 delims=|" %%x in ("!CURRENT_RESUME_LOG!") do (
+                if "%%x"=="!CURRENT_ITEMTYPE!" (
+                    SET RESUME_ITEMID=%%y
+                )
         IF !SHOULD_PROCESS! EQU 1 (
             REM Initialize progress log if needed
             IF NOT EXIST "!CURRENT_PROGRESS_LOG!" (
@@ -288,6 +324,10 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
             SET /A ITEMTYPE_COUNT+=1
 
             echo.
+            echo INFO: Resuming from ItemID: !RESUME_ITEMID!
+            echo [%DATE% %TIME%] RESUMING from ItemID: !RESUME_ITEMID! >> "!CURRENT_PROGRESS_LOG!"
+            SET EXPORT_CMD=!EXPORT_CMD! -r -s "!RESUME_ITEMID!"
+        )
             echo ========================================================================
             echo Processing Itemtype #!ITEMTYPE_COUNT!
             echo Export Name: !CURRENT_EXPORT_NAME!
@@ -330,6 +370,38 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
                     SET EXPORT_CMD=!EXPORT_CMD! -r -s "!RESUME_ITEMID!"
                 )
 
+        IF !EXPORT_STATUS! NEQ 0 (
+            echo.
+            echo ====================================================================
+            echo ERROR: Export failed for itemtype !CURRENT_ITEMTYPE! with error code !EXPORT_STATUS!
+            echo ====================================================================
+            echo [%DATE% %TIME%] FAILED: !CURRENT_ITEMTYPE! - Error code: !EXPORT_STATUS! >> "!CURRENT_PROGRESS_LOG!"
+
+            REM Get last itemid from ETK file for resume
+            call :GetLastItemId "!CURRENT_EXPORT_NAME!" "!CURRENT_BASE_FOLDER!"
+            IF NOT "!LAST_ITEMID!"=="" (
+                echo !CURRENT_ITEMTYPE!|!LAST_ITEMID! > "!CURRENT_RESUME_LOG!"
+                echo.
+                echo RESUME INFO: Last exported ItemID: !LAST_ITEMID!
+                echo RESUME INFO: To resume, run the script again
+                echo [%DATE% %TIME%] Last ItemID before failure: !LAST_ITEMID! >> "!CURRENT_PROGRESS_LOG!"
+            )
+
+            SET /A TOTAL_ERRORS+=1
+            REM Continue with next itemtype instead of exiting
+            goto :SkipLine
+        ) ELSE (
+            echo.
+            echo ====================================================================
+            echo SUCCESS: Export completed for itemtype !CURRENT_ITEMTYPE!
+            echo Completed: %DATE% %TIME%
+            echo ====================================================================
+            echo [%DATE% %TIME%] COMPLETED: !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
+
+            REM Remove resume point if exists
+            IF EXIST "!CURRENT_RESUME_LOG!" (
+                findstr /V /C:"!CURRENT_ITEMTYPE!|" "!CURRENT_RESUME_LOG!" > "!CURRENT_RESUME_LOG!.tmp" 2>nul
+                move /Y "!CURRENT_RESUME_LOG!.tmp" "!CURRENT_RESUME_LOG!" >nul 2>&1
                 echo.
                 echo Command: !EXPORT_CMD!
                 echo.
