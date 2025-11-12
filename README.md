@@ -13,8 +13,7 @@ Enhanced export automation scripts for IBM Content Manager, supporting both Wind
 
 ## Files
 
-- `export_icm.bat` - Windows batch script (legacy)
-- `Export-ICM.ps1` - **NEW: PowerShell script (RECOMMENDED for Windows)** - Much easier to debug!
+- `Export-ICM.ps1` - PowerShell script (Windows)
 - `export_icm.sh` - Linux shell script
 - `itemtypes_example.txt` - Example itemtype list file
 - `README-PowerShell.md` - Detailed PowerShell script documentation
@@ -34,12 +33,6 @@ Enhanced export automation scripts for IBM Content Manager, supporting both Wind
 ## Configuration
 
 Before running the scripts, you may need to modify the following configuration variables:
-
-### Windows (`export_icm.bat`)
-```batch
-SET JAVA_HOME=E:\jdk1.6.0_26
-SET DB2_HOME=E:\IBM\db2cmv8
-```
 
 ### Linux (`export_icm.sh`)
 ```bash
@@ -73,18 +66,13 @@ export ICM_PASSWORD="your_password"
 
 ## Usage
 
-> **Windows Users**: We strongly recommend using the new `Export-ICM.ps1` PowerShell script instead of the batch file. It's much easier to debug, has better error messages, and includes color-coded output. See [README-PowerShell.md](README-PowerShell.md) for complete documentation.
+See [README-PowerShell.md](README-PowerShell.md) for complete PowerShell documentation.
 
 ### Single Itemtype Export
 
-**Windows (PowerShell - RECOMMENDED):**
+**Windows (PowerShell):**
 ```powershell
 .\Export-ICM.ps1 -ExportName "007ClientesFacRI" -BaseFolder "G:\007_Clientes_Fac_RI" -ItemType "V03206007002D"
-```
-
-**Windows (Batch - Legacy):**
-```cmd
-export_icm.bat <export_name> <base_folder> "<itemtype>"
 ```
 
 **Linux:**
@@ -93,12 +81,14 @@ export_icm.bat <export_name> <base_folder> "<itemtype>"
 ```
 
 **Example:**
-```cmd
-REM Windows - Set credentials first
-SET ICM_USER=your_username
-SET ICM_PASSWORD=your_password
-export_icm.bat 007ClientesFacRI G:\007_Clientes_Fac_RI "V03206007002D"
+```powershell
+# Windows PowerShell - Set credentials first
+$env:ICM_USER = "your_username"
+$env:ICM_PASSWORD = "your_password"
+.\Export-ICM.ps1 -ExportName "007ClientesFacRI" -BaseFolder "G:\007_Clientes_Fac_RI" -ItemType "V03206007002D"
+```
 
+```bash
 # Linux - Set credentials first
 export ICM_USER="your_username"
 export ICM_PASSWORD="your_password"
@@ -107,14 +97,9 @@ export ICM_PASSWORD="your_password"
 
 ### Multiple Itemtypes Export
 
-**Windows (PowerShell - RECOMMENDED):**
+**Windows (PowerShell):**
 ```powershell
 .\Export-ICM.ps1 -ItemTypeListFile "itemtypes.txt"
-```
-
-**Windows (Batch - Legacy):**
-```cmd
-export_icm.bat <export_name> <base_folder> <itemtype_list_file>
 ```
 
 **Linux:**
@@ -123,12 +108,14 @@ export_icm.bat <export_name> <base_folder> <itemtype_list_file>
 ```
 
 **Example:**
-```cmd
-REM Windows - Set credentials first
-SET ICM_USER=your_username
-SET ICM_PASSWORD=your_password
-export_icm.bat 007ClientesFacRI G:\007_Clientes_Fac_RI itemtypes.txt
+```powershell
+# Windows PowerShell - Set credentials first
+$env:ICM_USER = "your_username"
+$env:ICM_PASSWORD = "your_password"
+.\Export-ICM.ps1 -ItemTypeListFile "itemtypes.txt"
+```
 
+```bash
 # Linux - Set credentials first
 export ICM_USER="your_username"
 export ICM_PASSWORD="your_password"

@@ -4,7 +4,7 @@ This repository contains automation scripts for exporting IBM Content Manager it
 
 ## Scripts
 
-- **export_icm.bat** - Windows batch script
+- **Export-ICM.ps1** - PowerShell script (Windows)
 - **export_icm.sh** - Linux shell script
 
 ## Features
@@ -21,10 +21,11 @@ Both scripts automatically:
 ## Prerequisites
 
 ### Windows
-- Java JDK 1.6.0_26 installed at `E:\jdk1.6.0_26`
-- IBM DB2 Content Manager 8.1 installed at `E:\IBM\db2cmv8`
-- Oracle JDBC drivers at `C:\oracle\ora92\jdbc\lib`
-- DB2 Java libraries at `c:\sqllib\JAVA`
+- PowerShell 5.1 or later
+- Java Development Kit (JDK) 1.6 or later
+- IBM Content Manager client libraries
+- DB2 client installed
+- See [README-PowerShell.md](README-PowerShell.md) for complete PowerShell documentation
 
 ### Linux
 - Java installed and available in PATH
@@ -34,16 +35,18 @@ Both scripts automatically:
 
 ## Usage
 
-### Windows
+### Windows (PowerShell)
 
-```batch
-export_icm.bat <export_name> <base_folder> <itemtype>
+```powershell
+.\Export-ICM.ps1 -ExportName "007ClientesConstruya" -BaseFolder "G:\007_Clientes_Construya" -ItemType "V03206007003D"
 ```
 
 **Example:**
-```batch
-export_icm.bat 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
+```powershell
+.\Export-ICM.ps1 -ExportName "007ClientesConstruya" -BaseFolder "G:\007_Clientes_Construya" -ItemType "V03206007003D"
 ```
+
+See [README-PowerShell.md](README-PowerShell.md) for complete PowerShell documentation including multiple itemtypes and resume functionality.
 
 ### Linux
 
@@ -87,11 +90,11 @@ The scripts require ICM credentials to be set as environment variables before ru
 - **ICM_USER**: IBM Content Manager username
 - **ICM_PASSWORD**: IBM Content Manager password
 
-**Example (Windows):**
-```batch
-SET ICM_USER=your_username
-SET ICM_PASSWORD=your_password
-export_icm.bat 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
+**Example (Windows PowerShell):**
+```powershell
+$env:ICM_USER = "your_username"
+$env:ICM_PASSWORD = "your_password"
+.\Export-ICM.ps1 -ExportName "007ClientesConstruya" -BaseFolder "G:\007_Clientes_Construya" -ItemType "V03206007003D"
 ```
 
 **Example (Linux):**
@@ -175,11 +178,8 @@ All Completed Packages:
 
 ### Changing Installation Paths
 
-**Windows (export_icm.bat):**
-```batch
-SET JAVA_HOME=E:\jdk1.6.0_26
-SET DB2_HOME=E:\IBM\db2cmv8
-```
+**Windows (PowerShell):**
+See [README-PowerShell.md](README-PowerShell.md) for PowerShell configuration options.
 
 **Linux (export_icm.sh):**
 ```bash
@@ -192,10 +192,10 @@ DB2_SQLLIB="/IBM/SQLLIB"
 
 Credentials must be set as environment variables before running the scripts.
 
-**Windows:**
-```batch
-SET ICM_USER=your_username
-SET ICM_PASSWORD=your_password
+**Windows (PowerShell):**
+```powershell
+$env:ICM_USER = "your_username"
+$env:ICM_PASSWORD = "your_password"
 ```
 
 **Linux:**
@@ -223,14 +223,14 @@ Both scripts include:
 
 ## Example Use Cases
 
-### Windows Examples
+### Windows (PowerShell) Examples
 
-```batch
-REM Export client documents
-export_icm.bat 007ClientesConstruya G:\007_Clientes_Construya "V03206007003D"
+```powershell
+# Export client documents
+.\Export-ICM.ps1 -ExportName "007ClientesConstruya" -BaseFolder "G:\007_Clientes_Construya" -ItemType "V03206007003D"
 
-REM Export invoice documents
-export_icm.bat 007ClientesFacRI G:\007_Clientes_Fac_RI "V03206007002D"
+# Export invoice documents
+.\Export-ICM.ps1 -ExportName "007ClientesFacRI" -BaseFolder "G:\007_Clientes_Fac_RI" -ItemType "V03206007002D"
 ```
 
 ### Linux Examples

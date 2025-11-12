@@ -2,12 +2,12 @@
 
 ## Overview
 
-This PowerShell script is a complete rewrite of `export_icm.bat` with the following improvements:
+This PowerShell script provides a robust and maintainable solution for IBM Content Manager exports with the following improvements:
 
 - **Much easier to debug** - Clear error messages, structured code, verbose logging
 - **Better error handling** - Try/catch blocks, proper exit codes
 - **PowerShell 2.0 compatible** - Works on Windows Server 2008, Windows 7, and newer
-- **Same functionality** - All features from the batch file are preserved
+- **Full-featured** - Resume capability, multiple itemtypes, progress tracking
 - **Cleaner code** - Functions, parameters, and structured programming
 
 ## Requirements
@@ -217,22 +217,6 @@ View built-in help:
 Get-Help .\Export-ICM.ps1 -Full
 Get-Help .\Export-ICM.ps1 -Examples
 ```
-
-## Comparison with Batch File
-
-| Feature | Batch File | PowerShell |
-|---------|-----------|------------|
-| Debugging | Difficult (complex syntax) | Easy (clear errors) |
-| Error Handling | Basic | Comprehensive |
-| Code Structure | Linear with GOTOs | Functions & regions |
-| Output | Plain text | Color-coded |
-| Resume Detection | Manual parsing | Automatic |
-| Verbose Logging | No | Yes (`-Verbose`) |
-| Parameter Validation | Manual | Built-in |
-| Help Documentation | Comments only | Built-in help |
-| CLASSPATH Display | No | Yes (numbered list) |
-| Path Verification | No | Yes (checks if files exist) |
-| Explicit Classpath | Uses env var only | Passes `-classpath` to Java |
 
 ## Advanced Usage
 
