@@ -267,7 +267,8 @@ REM Read itemtypes from file (format: export_name|base_folder|itemtype)
 REM Set regular variable for use in FOR loop (avoid delayed expansion issues)
 SET ITEMTYPE_FILE_FOR_LOOP=!ITEMTYPE_LIST_FILE!
 
-for /f "delims=| tokens=1,2,3,*" %%a in ('type "%ITEMTYPE_FILE_FOR_LOOP%"') do (
+REM TESTING: Hardcoded path to isolate the issue
+for /f "delims=| tokens=1,2,3,*" %%a in ('type "G:\026_Cert_Destination\log\itemtypes_temp.txt"') do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
