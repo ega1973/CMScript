@@ -265,7 +265,7 @@ SET ITEMTYPE_COUNT=0
 
 REM For single itemtype mode, use the values directly from command line
 REM No need for file or FOR loop
-IF %IS_MULTI_MODE% EQU 0 (
+IF !IS_MULTI_MODE! EQU 0 (
     SET CURRENT_EXPORT_NAME=!EXPORT_NAME!
     SET CURRENT_BASE_FOLDER=!BASE_FOLDER!
     SET CURRENT_ITEMTYPE=!ITEMTYPE_PARAM!
