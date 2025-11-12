@@ -618,7 +618,27 @@ function Process-ItemType {
     # Check for resume point
     $resumeItemId = Get-ResumeItemId -ItemType $ItemType -ResumeLog $resumeLog
     if ($resumeItemId) {
-        Write-Log -Message "RESUMING from ItemID: $resumeItemId" -LogFile $progressLog
+        Write-Log -Message "RESUMING from ItemID (from resume log): $resumeItemId" -LogFile $progressLog
+    } else {
+        # Check if there's an incomplete export in the ETK file
+        # This handles cases where the export was interrupted without a proper failure
+        $lastItemId = Get-LastItemIdFromETK -ExportName $ExportName -BaseFolder $BaseFolder
+        if ($lastItemId) {
+            # Check if export is actually incomplete (not finished)
+            $etkFile = Join-Path $logFolder "$ExportName.etk"
+            if (Test-Path $etkFile) {
+                $content = Get-Content $etkFile
+                $exportFinished = $content | Where-Object { $_ -match "Completed All Packages:" }
+
+                if (-not $exportFinished) {
+                    # Export is incomplete - resume from last item
+                    $resumeItemId = $lastItemId
+                    Write-Log -Message "RESUMING from ItemID (detected incomplete export): $resumeItemId" -LogFile $progressLog
+                    Write-Host ""
+                    Write-Host "INFO: Detected incomplete export. Resuming from ItemID: $resumeItemId" -ForegroundColor Yellow
+                }
+            }
+        }
     }
 
     # Execute export
