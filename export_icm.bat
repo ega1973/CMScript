@@ -94,7 +94,7 @@ IF EXIST "%~1" (
     REM Create temporary file with three columns in log folder
     REM Use pipe delimiter to avoid issues with spaces and colons in paths
     REM Use fixed filename instead of random for testing
-    SET ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp.txt
+    SET "ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp.txt"
     >!ITEMTYPE_LIST_FILE! (
         echo !EXPORT_NAME!^|!BASE_FOLDER!^|!ITEMTYPE_PARAM!
     )
@@ -263,13 +263,12 @@ echo.
 SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
-REM Read itemtypes from file (format: export_name|base_folder|itemtype)
-REM Use PowerShell to read env var and parse, avoiding batch path parsing
-SET "ITEMTYPE_FILE_FOR_LOOP=!ITEMTYPE_LIST_FILE!"
-for /f "tokens=1-3* delims=	" %%a in ('powershell -NoProfile -Command "$file = $env:ITEMTYPE_FILE_FOR_LOOP; $content = Get-Content $file; foreach($line in $content) { $parts = $line -split '\\|'; Write-Output ($parts[0] + [char]9 + $parts[1] + [char]9 + $parts[2]) }"') do (
-    SET CURRENT_EXPORT_NAME=%%a
-    SET CURRENT_BASE_FOLDER=%%b
-    SET CURRENT_ITEMTYPE=%%c
+REM For single itemtype mode, use the values directly from command line
+REM No need for file or FOR loop
+IF %IS_MULTI_MODE% EQU 0 (
+    SET CURRENT_EXPORT_NAME=!EXPORT_NAME!
+    SET CURRENT_BASE_FOLDER=!BASE_FOLDER!
+    SET CURRENT_ITEMTYPE=!ITEMTYPE_PARAM!
     SET SHOULD_PROCESS=1
 
     REM Skip empty lines and comments
@@ -396,7 +395,6 @@ for /f "tokens=1-3* delims=	" %%a in ('powershell -NoProfile -Command "$file = $
         )
 
         :SkipLine
-    )
 )
 
 REM ============================================================================
