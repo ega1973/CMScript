@@ -86,8 +86,13 @@ IF EXIST "%~1" (
     SET LOG_FOLDER=%BASE_FOLDER%\log
     SET PROGRESS_LOG=%LOG_FOLDER%\export_progress.log
     SET RESUME_LOG=%LOG_FOLDER%\export_resume.log
-    REM Create temporary file with three columns
-    SET ITEMTYPE_LIST_FILE=%TEMP%\itemtypes_temp_%RANDOM%.txt
+
+    REM Create folders first to avoid "path not found" errors
+    IF NOT EXIST "%BASE_FOLDER%" mkdir "%BASE_FOLDER%"
+    IF NOT EXIST "%LOG_FOLDER%" mkdir "%LOG_FOLDER%"
+
+    REM Create temporary file with three columns in log folder
+    SET ITEMTYPE_LIST_FILE=%LOG_FOLDER%\itemtypes_temp_%RANDOM%.txt
     echo %EXPORT_NAME% %BASE_FOLDER% %ITEMTYPE_PARAM%>"%ITEMTYPE_LIST_FILE%"
 ) ELSE (
     echo Error: Invalid parameters
@@ -418,10 +423,10 @@ IF %IS_MULTI_MODE% EQU 0 (
 echo Found ETK file: %ETK_FILE%
 echo.
 
-REM Create temporary files for processing
-SET TEMP_COMPLETED=%TEMP%\etk_completed_%RANDOM%.txt
-SET TEMP_STARTED=%TEMP%\etk_started_%RANDOM%.txt
-SET TEMP_FAILURES=%TEMP%\etk_failures_%RANDOM%.txt
+REM Create temporary files for processing in log folder
+SET TEMP_COMPLETED=%LOG_FOLDER%\etk_completed_%RANDOM%.txt
+SET TEMP_STARTED=%LOG_FOLDER%\etk_started_%RANDOM%.txt
+SET TEMP_FAILURES=%LOG_FOLDER%\etk_failures_%RANDOM%.txt
 
 REM Extract package information
 findstr /C:"Package Completed:" "%ETK_FILE%" > "%TEMP_COMPLETED%" 2>nul
