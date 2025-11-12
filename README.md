@@ -13,9 +13,11 @@ Enhanced export automation scripts for IBM Content Manager, supporting both Wind
 
 ## Files
 
-- `export_icm.bat` - Windows batch script
+- `export_icm.bat` - Windows batch script (legacy)
+- `Export-ICM.ps1` - **NEW: PowerShell script (RECOMMENDED for Windows)** - Much easier to debug!
 - `export_icm.sh` - Linux shell script
 - `itemtypes_example.txt` - Example itemtype list file
+- `README-PowerShell.md` - Detailed PowerShell script documentation
 
 ## Prerequisites
 
@@ -49,7 +51,13 @@ IBM_HOME="/IBM"
 
 Credentials must be set as environment variables before running the scripts:
 
-**Windows:**
+**Windows (PowerShell):**
+```powershell
+$env:ICM_USER = "your_username"
+$env:ICM_PASSWORD = "your_password"
+```
+
+**Windows (Command Prompt):**
 ```batch
 SET ICM_USER=your_username
 SET ICM_PASSWORD=your_password
@@ -65,9 +73,16 @@ export ICM_PASSWORD="your_password"
 
 ## Usage
 
+> **Windows Users**: We strongly recommend using the new `Export-ICM.ps1` PowerShell script instead of the batch file. It's much easier to debug, has better error messages, and includes color-coded output. See [README-PowerShell.md](README-PowerShell.md) for complete documentation.
+
 ### Single Itemtype Export
 
-**Windows:**
+**Windows (PowerShell - RECOMMENDED):**
+```powershell
+.\Export-ICM.ps1 -ExportName "007ClientesFacRI" -BaseFolder "G:\007_Clientes_Fac_RI" -ItemType "V03206007002D"
+```
+
+**Windows (Batch - Legacy):**
 ```cmd
 export_icm.bat <export_name> <base_folder> "<itemtype>"
 ```
@@ -92,7 +107,12 @@ export ICM_PASSWORD="your_password"
 
 ### Multiple Itemtypes Export
 
-**Windows:**
+**Windows (PowerShell - RECOMMENDED):**
+```powershell
+.\Export-ICM.ps1 -ItemTypeListFile "itemtypes.txt"
+```
+
+**Windows (Batch - Legacy):**
 ```cmd
 export_icm.bat <export_name> <base_folder> <itemtype_list_file>
 ```
