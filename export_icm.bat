@@ -279,7 +279,7 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
 
         REM Initialize progress log if needed
         IF NOT EXIST "!CURRENT_PROGRESS_LOG!" (
-            echo Export Progress Log - Created: !DATE! !TIME! > "!CURRENT_PROGRESS_LOG!"
+            echo Export Progress Log - Created: %DATE% %TIME% > "!CURRENT_PROGRESS_LOG!"
             echo ============================================================================ >> "!CURRENT_PROGRESS_LOG!"
         )
 
@@ -291,18 +291,18 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
         echo Export Name: !CURRENT_EXPORT_NAME!
         echo Base Folder: !CURRENT_BASE_FOLDER!
         echo Itemtype: !CURRENT_ITEMTYPE!
-        echo Started: !DATE! !TIME!
+        echo Started: %DATE% %TIME%
         echo ========================================================================
 
         REM Log progress
-        echo [!DATE! !TIME!] Processing itemtype: !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
+        echo [%DATE% %TIME%] Processing itemtype: !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
 
         REM Check if this itemtype was already completed
         findstr /C:"COMPLETED: !CURRENT_ITEMTYPE!" "!CURRENT_PROGRESS_LOG!" >nul 2>&1
         IF !ERRORLEVEL! EQU 0 (
             echo.
             echo INFO: Itemtype !CURRENT_ITEMTYPE! was already completed. Skipping...
-            echo [!DATE! !TIME!] SKIPPED (already completed): !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
+            echo [%DATE% %TIME%] SKIPPED (already completed): !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
             goto :SkipLine
         )
 
@@ -323,7 +323,7 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
         IF NOT "!RESUME_ITEMID!"=="" (
             echo.
             echo INFO: Resuming from ItemID: !RESUME_ITEMID!
-            echo [!DATE! !TIME!] RESUMING from ItemID: !RESUME_ITEMID! >> "!CURRENT_PROGRESS_LOG!"
+            echo [%DATE% %TIME%] RESUMING from ItemID: !RESUME_ITEMID! >> "!CURRENT_PROGRESS_LOG!"
             SET EXPORT_CMD=!EXPORT_CMD! -r -s "!RESUME_ITEMID!"
         )
 
@@ -341,7 +341,7 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
             echo ====================================================================
             echo ERROR: Export failed for itemtype !CURRENT_ITEMTYPE! with error code !EXPORT_STATUS!
             echo ====================================================================
-            echo [!DATE! !TIME!] FAILED: !CURRENT_ITEMTYPE! - Error code: !EXPORT_STATUS! >> "!CURRENT_PROGRESS_LOG!"
+            echo [%DATE% %TIME%] FAILED: !CURRENT_ITEMTYPE! - Error code: !EXPORT_STATUS! >> "!CURRENT_PROGRESS_LOG!"
 
             REM Get last itemid from ETK file for resume
             call :GetLastItemId "!CURRENT_EXPORT_NAME!" "!CURRENT_BASE_FOLDER!"
@@ -350,7 +350,7 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
                 echo.
                 echo RESUME INFO: Last exported ItemID: !LAST_ITEMID!
                 echo RESUME INFO: To resume, run the script again
-                echo [!DATE! !TIME!] Last ItemID before failure: !LAST_ITEMID! >> "!CURRENT_PROGRESS_LOG!"
+                echo [%DATE% %TIME%] Last ItemID before failure: !LAST_ITEMID! >> "!CURRENT_PROGRESS_LOG!"
             )
 
             SET /A TOTAL_ERRORS+=1
@@ -360,9 +360,9 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
             echo.
             echo ====================================================================
             echo SUCCESS: Export completed for itemtype !CURRENT_ITEMTYPE!
-            echo Completed: !DATE! !TIME!
+            echo Completed: %DATE% %TIME%
             echo ====================================================================
-            echo [!DATE! !TIME!] COMPLETED: !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
+            echo [%DATE% %TIME%] COMPLETED: !CURRENT_ITEMTYPE! >> "!CURRENT_PROGRESS_LOG!"
 
             REM Remove resume point if exists
             IF EXIST "!CURRENT_RESUME_LOG!" (
