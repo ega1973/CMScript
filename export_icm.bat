@@ -83,9 +83,9 @@ IF EXIST "%~1" (
     SET EXPORT_NAME=%~1
     SET BASE_FOLDER=%~2
     SET ITEMTYPE_PARAM=%~3
-    SET LOG_FOLDER=%BASE_FOLDER%\log
-    SET PROGRESS_LOG=%BASE_FOLDER%\log\export_progress.log
-    SET RESUME_LOG=%BASE_FOLDER%\log\export_resume.log
+    SET LOG_FOLDER=%~2\log
+    SET PROGRESS_LOG=%~2\log\export_progress.log
+    SET RESUME_LOG=%~2\log\export_resume.log
 
     REM Create folders first to avoid "path not found" errors
     IF NOT EXIST "%BASE_FOLDER%" mkdir "%BASE_FOLDER%"
