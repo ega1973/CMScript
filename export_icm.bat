@@ -264,11 +264,9 @@ SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name|base_folder|itemtype)
-REM Temporarily disable delayed expansion for FOR loop parsing
+REM Use PowerShell to parse the file and avoid batch FOR loop issues
 SET ITEMTYPE_FILE_FOR_LOOP=!ITEMTYPE_LIST_FILE!
-SETLOCAL DisableDelayedExpansion
-for /f "delims=| tokens=1,2,3,*" %%a in ('type "%ITEMTYPE_FILE_FOR_LOOP%"') do (
-    SETLOCAL EnableDelayedExpansion
+for /f "tokens=1,2,3 delims=|" %%a in ('powershell -NoProfile -Command "Get-Content '%ITEMTYPE_FILE_FOR_LOOP%'"') do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
@@ -398,9 +396,8 @@ for /f "delims=| tokens=1,2,3,*" %%a in ('type "%ITEMTYPE_FILE_FOR_LOOP%"') do (
         )
 
         :SkipLine
-    ENDLOCAL
+    )
 )
-ENDLOCAL
 
 REM ============================================================================
 REM Summary
