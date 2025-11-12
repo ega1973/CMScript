@@ -226,38 +226,93 @@ function Remove-ResumePoint {
 function Set-ICMClasspath {
     Write-Header "Setting up CLASSPATH"
 
-    $classpathItems = @(
-        (Join-Path $DB2_HOME "cmgmt")
-        (Join-Path $DB2_HOME "lib\cmbview81.jar")
-        (Join-Path $DB2_HOME "lib\cmb81.jar")
-        (Join-Path $DB2_HOME "lib\cmbcm81.jar")
-        (Join-Path $DB2_HOME "lib\xsd.jar")
-        (Join-Path $DB2_HOME "lib\common.jar")
-        (Join-Path $DB2_HOME "lib\ecore.jar")
-        (Join-Path $DB2_HOME "lib\ecore.xmi.jar")
-        (Join-Path $DB2_HOME "admin\common\sacommon.jar")
-        (Join-Path $DB2_HOME "lib\cmbicm81.jar")
-        (Join-Path $DB2_HOME "lib\cmbwcm81.jar")
-        (Join-Path $DB2_HOME "lib\cmbxmlmap.jar")
-        (Join-Path $DB2_HOME "lib\Clio4CM.jar")
-        (Join-Path $DB2_HOME "lib\jcache.jar")
-        (Join-Path $DB2_HOME "lib\cmbutil81.jar")
-        (Join-Path $DB2_HOME "lib\cmbutilicm81.jar")
-        (Join-Path $DB2_HOME "lib\icmrm81.jar")
+    # Build the ICM-specific classpath items
+    $icmClasspathItems = @(
+        (Join-Path $script:DB2_HOME "cmgmt")
+        (Join-Path $script:DB2_HOME "lib\cmbview81.jar")
+        (Join-Path $script:DB2_HOME "lib\cmb81.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbcm81.jar")
+        (Join-Path $script:DB2_HOME "lib\xsd.jar")
+        (Join-Path $script:DB2_HOME "lib\common.jar")
+        (Join-Path $script:DB2_HOME "lib\ecore.jar")
+        (Join-Path $script:DB2_HOME "lib\ecore.xmi.jar")
+        (Join-Path $script:DB2_HOME "admin\common\sacommon.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbicm81.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbwcm81.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbxmlmap.jar")
+        (Join-Path $script:DB2_HOME "lib\Clio4CM.jar")
+        (Join-Path $script:DB2_HOME "lib\jcache.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbutil81.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbutilicm81.jar")
+        (Join-Path $script:DB2_HOME "lib\icmrm81.jar")
         "c:\sqllib\JAVA\DB2JAVA.ZIP"
         "C:\oracle\ora92\jdbc\lib\ojdbc14.jar"
         "C:\oracle\ora92\jdbc\lib\nls_charset12.zip"
-        (Join-Path $DB2_HOME "lib\xerces.jar")
+        (Join-Path $script:DB2_HOME "lib\xerces.jar")
         "\java\ibmjndi.jar"
-        (Join-Path $DB2_HOME "lib\cmblog4j81.jar")
-        (Join-Path $DB2_HOME "lib\log4j-1.2.8.jar")
-        (Join-Path $DB2_HOME "lib\cmbsdk81.jar")
-        (Join-Path $DB2_HOME "lib\cmbwas81.jar")
-        (Join-Path $DB2_HOME "samples\java\icm\Sample1")
+        (Join-Path $script:DB2_HOME "lib\cmblog4j81.jar")
+        (Join-Path $script:DB2_HOME "lib\log4j-1.2.8.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbsdk81.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbwas81.jar")
+        (Join-Path $script:DB2_HOME "samples\java\icm\Sample1")
     )
 
-    $env:CLASSPATH = $classpathItems -join ";"
-    Write-Host "CLASSPATH configured successfully"
+    # Preserve existing CLASSPATH if any, then append ICM classpath
+    $existingClasspath = $env:CLASSPATH
+    if ($existingClasspath) {
+        Write-Host "Existing CLASSPATH found, appending ICM libraries..." -ForegroundColor Yellow
+        $env:CLASSPATH = $existingClasspath + ";" + ($icmClasspathItems -join ";")
+    } else {
+        Write-Host "No existing CLASSPATH, creating new one..."
+        $env:CLASSPATH = $icmClasspathItems -join ";"
+    }
+
+    # Store classpath in script variable for use in Java command
+    $script:FULL_CLASSPATH = $env:CLASSPATH
+
+    Write-Host ""
+    Write-Host "CLASSPATH configured successfully!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "CURRENT CLASSPATH:" -ForegroundColor Cyan
+    Write-Host ("=" * 76) -ForegroundColor Cyan
+
+    # Display each classpath entry on a separate line for easy verification
+    $classpathEntries = $env:CLASSPATH -split ";"
+    $entryNumber = 1
+    foreach ($entry in $classpathEntries) {
+        if ($entry) {
+            Write-Host "  [$entryNumber] $entry"
+            $entryNumber++
+        }
+    }
+
+    Write-Host ("=" * 76) -ForegroundColor Cyan
+    Write-Host "Total classpath entries: $($entryNumber - 1)" -ForegroundColor Cyan
+    Write-Host ""
+
+    # Verify critical paths exist
+    Write-Host "Verifying critical paths..." -ForegroundColor Yellow
+    $criticalPaths = @(
+        (Join-Path $script:DB2_HOME "lib\cmb81.jar")
+        (Join-Path $script:DB2_HOME "lib\cmbicm81.jar")
+        "c:\sqllib\JAVA\DB2JAVA.ZIP"
+    )
+
+    $missingPaths = 0
+    foreach ($path in $criticalPaths) {
+        if (Test-Path $path) {
+            Write-Host "  [OK] $path" -ForegroundColor Green
+        } else {
+            Write-Host "  [MISSING] $path" -ForegroundColor Red
+            $missingPaths++
+        }
+    }
+
+    if ($missingPaths -gt 0) {
+        Write-Host ""
+        Write-Host "WARNING: $missingPaths critical path(s) not found!" -ForegroundColor Red
+        Write-Host "Please verify your JAVA_HOME and DB2_HOME settings." -ForegroundColor Red
+    }
     Write-Host ""
 }
 
@@ -273,8 +328,9 @@ function Invoke-ICMExport {
 
     $logFolder = Join-Path $BaseFolder "log"
 
-    # Build command arguments
+    # Build command arguments with explicit classpath
     $arguments = @(
+        "-classpath", "`"$script:FULL_CLASSPATH`""
         "TExportManagerICM"
         "-u", $User
         "-p", $Password
@@ -291,14 +347,30 @@ function Invoke-ICMExport {
         $arguments += @("-r", "-s", "`"$ResumeItemId`"")
     }
 
-    # Display command
-    $cmdDisplay = "$JAVA_EXE " + ($arguments -join " ")
+    # Display command (shortened for readability)
     Write-Host ""
-    Write-Host "Command: $cmdDisplay" -ForegroundColor Cyan
+    Write-Host "Executing Java Export Command:" -ForegroundColor Cyan
+    Write-Host ("=" * 76) -ForegroundColor Cyan
+    Write-Host "Java Executable: $script:JAVA_EXE" -ForegroundColor White
+    Write-Host "Main Class: TExportManagerICM" -ForegroundColor White
+    Write-Host "User: $User" -ForegroundColor White
+    Write-Host "Export Name: $ExportName" -ForegroundColor White
+    Write-Host "ItemType: $ItemType" -ForegroundColor White
+    Write-Host "Base Folder: $BaseFolder" -ForegroundColor White
+    Write-Host "Log Folder: $logFolder" -ForegroundColor White
+    if ($ResumeItemId) {
+        Write-Host "Resume from ItemID: $ResumeItemId" -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "Full Command Line:" -ForegroundColor Cyan
+    $cmdDisplay = "`"$script:JAVA_EXE`" -classpath `"...(see above)...`" TExportManagerICM " + ($arguments[2..($arguments.Length-1)] -join " ")
+    Write-Host $cmdDisplay -ForegroundColor Gray
+    Write-Host ("=" * 76) -ForegroundColor Cyan
     Write-Host ""
 
-    # Execute export
-    $process = Start-Process -FilePath $JAVA_EXE `
+    # Execute export with explicit classpath
+    # Note: CLASSPATH environment variable is also set as fallback
+    $process = Start-Process -FilePath $script:JAVA_EXE `
                             -ArgumentList $arguments `
                             -Wait `
                             -PassThru `
