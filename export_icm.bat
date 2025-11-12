@@ -260,6 +260,11 @@ SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name base_folder itemtype)
+REM Use CALL to force delayed expansion before FOR loop parses
+call :ProcessItemtypes
+goto :AfterProcessing
+
+:ProcessItemtypes
 for /f "usebackq tokens=1,2,3,*" %%a in ("!ITEMTYPE_LIST_FILE!") do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
@@ -392,7 +397,9 @@ for /f "usebackq tokens=1,2,3,*" %%a in ("!ITEMTYPE_LIST_FILE!") do (
         :SkipLine
     )
 )
+goto :eof
 
+:AfterProcessing
 REM ============================================================================
 REM Summary
 REM ============================================================================
