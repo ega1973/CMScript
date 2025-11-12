@@ -179,6 +179,9 @@ set CLASSPATH=%CLASSPATH%;%DB2_HOME%\samples\java\icm\Sample1
 echo CLASSPATH configured successfully
 echo.
 
+REM Skip function definitions and go to main processing
+goto :StartProcessing
+
 REM ============================================================================
 REM Function to get last itemid from ETK file
 REM Parameters: %1=export_name, %2=base_folder
@@ -225,6 +228,11 @@ IF EXIST "%ETK_FILE%" (
     )
 )
 goto :eof
+
+REM ============================================================================
+REM Main Processing Section
+REM ============================================================================
+:StartProcessing
 
 REM ============================================================================
 REM Process each itemtype
