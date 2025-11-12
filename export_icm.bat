@@ -254,7 +254,7 @@ SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name base_folder itemtype)
-for /f "usebackq tokens=1,2,3,*" %%a in ("%ITEMTYPE_LIST_FILE%") do (
+for /f "usebackq tokens=1,2,3,*" %%a in ("!ITEMTYPE_LIST_FILE!") do (
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
