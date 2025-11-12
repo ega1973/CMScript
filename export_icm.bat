@@ -264,11 +264,11 @@ SET TOTAL_ERRORS=0
 SET ITEMTYPE_COUNT=0
 
 REM Read itemtypes from file (format: export_name|base_folder|itemtype)
-REM Set regular variable for use in FOR loop (avoid delayed expansion issues)
+REM Temporarily disable delayed expansion for FOR loop parsing
 SET ITEMTYPE_FILE_FOR_LOOP=!ITEMTYPE_LIST_FILE!
-
-REM TESTING: Hardcoded path to isolate the issue
-for /f "delims=| tokens=1,2,3,*" %%a in ('type "G:\026_Cert_Destination\log\itemtypes_temp.txt"') do (
+SETLOCAL DisableDelayedExpansion
+for /f "delims=| tokens=1,2,3,*" %%a in ('type "%ITEMTYPE_FILE_FOR_LOOP%"') do (
+    SETLOCAL EnableDelayedExpansion
     SET CURRENT_EXPORT_NAME=%%a
     SET CURRENT_BASE_FOLDER=%%b
     SET CURRENT_ITEMTYPE=%%c
@@ -398,8 +398,9 @@ for /f "delims=| tokens=1,2,3,*" %%a in ('type "G:\026_Cert_Destination\log\item
         )
 
         :SkipLine
-    )
+    ENDLOCAL
 )
+ENDLOCAL
 
 REM ============================================================================
 REM Summary
