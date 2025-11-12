@@ -227,6 +227,7 @@ function Set-ICMClasspath {
     Write-Header "Setting up CLASSPATH"
 
     # Build the ICM-specific classpath items
+    # Matches the exact order and paths from the working batch script
     $icmClasspathItems = @(
         (Join-Path $script:DB2_HOME "cmgmt")
         (Join-Path $script:DB2_HOME "lib\cmbview81.jar")
@@ -246,15 +247,11 @@ function Set-ICMClasspath {
         (Join-Path $script:DB2_HOME "lib\cmbutilicm81.jar")
         (Join-Path $script:DB2_HOME "lib\icmrm81.jar")
         "c:\sqllib\JAVA\DB2JAVA.ZIP"
-        "C:\oracle\ora92\jdbc\lib\ojdbc14.jar"
-        "C:\oracle\ora92\jdbc\lib\nls_charset12.zip"
         (Join-Path $script:DB2_HOME "lib\xerces.jar")
-        "\java\ibmjndi.jar"
         (Join-Path $script:DB2_HOME "lib\cmblog4j81.jar")
         (Join-Path $script:DB2_HOME "lib\log4j-1.2.8.jar")
         (Join-Path $script:DB2_HOME "lib\cmbsdk81.jar")
         (Join-Path $script:DB2_HOME "lib\cmbwas81.jar")
-        (Join-Path $script:DB2_HOME "samples\java\icm\Sample1")
     )
 
     # Preserve existing CLASSPATH if any, then append ICM classpath

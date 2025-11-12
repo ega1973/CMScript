@@ -139,9 +139,10 @@ CURRENT CLASSPATH:
   [3] E:\IBM\db2cmv8\lib\cmb81.jar
   [4] E:\IBM\db2cmv8\lib\cmbcm81.jar
   ...
-  [27] E:\IBM\db2cmv8\samples\java\icm\Sample1
+  [22] E:\IBM\db2cmv8\lib\cmbsdk81.jar
+  [23] E:\IBM\db2cmv8\lib\cmbwas81.jar
 ============================================================================
-Total classpath entries: 27
+Total classpath entries: 23
 
 Verifying critical paths...
   [OK] E:\IBM\db2cmv8\lib\cmb81.jar
