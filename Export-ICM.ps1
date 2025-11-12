@@ -61,6 +61,9 @@ $script:JAVA_HOME = "E:\jdk1.6.0_26"
 $script:DB2_HOME = "E:\IBM\db2cmv8"
 $script:JAVA_EXE = Join-Path $JAVA_HOME "bin\java.exe"
 
+# Sample1 directory - contains TImportExportICM.ini and required classes
+$script:SAMPLE1_DIR = Join-Path $script:DB2_HOME "samples\java\icm\Sample1"
+
 #endregion
 
 #region Helper Functions
@@ -252,6 +255,8 @@ function Set-ICMClasspath {
         (Join-Path $script:DB2_HOME "lib\log4j-1.2.8.jar")
         (Join-Path $script:DB2_HOME "lib\cmbsdk81.jar")
         (Join-Path $script:DB2_HOME "lib\cmbwas81.jar")
+        # Add Sample1 directory - required by TExportManagerICM
+        (Join-Path $script:DB2_HOME "samples\java\icm\Sample1")
     )
 
     # Preserve existing CLASSPATH if any, then append ICM classpath
@@ -311,6 +316,7 @@ function Set-ICMClasspath {
         (Join-Path $script:DB2_HOME "lib\cmb81.jar")
         (Join-Path $script:DB2_HOME "lib\cmbicm81.jar")
         "c:\sqllib\JAVA\DB2JAVA.ZIP"
+        (Join-Path $script:DB2_HOME "samples\java\icm\Sample1")
     )
 
     $missingPaths = 0
@@ -385,8 +391,13 @@ function Invoke-ICMExport {
 
     # Execute export with explicit classpath
     # Note: CLASSPATH environment variable is also set as fallback
+    # Set working directory to Sample1 directory to find TImportExportICM.ini
+    Write-Host "Working Directory: $script:SAMPLE1_DIR" -ForegroundColor White
+    Write-Host ""
+
     $process = Start-Process -FilePath $script:JAVA_EXE `
                             -ArgumentList $arguments `
+                            -WorkingDirectory $script:SAMPLE1_DIR `
                             -Wait `
                             -PassThru `
                             -NoNewWindow
@@ -733,6 +744,22 @@ try {
         Write-Host "Please set ICM_PASSWORD before running this script"
         Write-Host "Example: `$env:ICM_PASSWORD = 'your_password'"
         exit 1
+    }
+
+    # Check for TImportExportICM.ini file in Sample1 directory
+    $iniFile = Join-Path $script:SAMPLE1_DIR "TImportExportICM.ini"
+    if (-not (Test-Path $iniFile)) {
+        Write-Host ""
+        Write-Host "ERROR: TImportExportICM.ini not found in Sample1 directory" -ForegroundColor Red
+        Write-Host "Expected location: $iniFile" -ForegroundColor Red
+        Write-Host "This configuration file is required by TExportManagerICM." -ForegroundColor Red
+        Write-Host "Please ensure the file exists at the expected location." -ForegroundColor Red
+        Write-Host ""
+        exit 1
+    } else {
+        Write-Host ""
+        Write-Host "Found configuration file: $iniFile" -ForegroundColor Green
+        Write-Host ""
     }
 
     # Set up CLASSPATH
