@@ -93,7 +93,7 @@ IF EXIST "%~1" (
 
     REM Create temporary file with three columns in log folder
     SET ITEMTYPE_LIST_FILE=!LOG_FOLDER!\itemtypes_temp_%RANDOM%.txt
-    echo !EXPORT_NAME! !BASE_FOLDER! !ITEMTYPE_PARAM!>"!ITEMTYPE_LIST_FILE!"
+    echo %EXPORT_NAME% %BASE_FOLDER% %ITEMTYPE_PARAM%>"!ITEMTYPE_LIST_FILE!"
 ) ELSE (
     echo Error: Invalid parameters
     echo Provide either ^<itemtype_list_file^> or ^<export_name^> ^<base_folder^> ^<itemtype^>
