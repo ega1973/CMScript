@@ -239,16 +239,59 @@ get_last_itemid() {
 }
 
 ################################################################################
-# Process each itemtype
+# Pre-read itemtypes to display summary
 ################################################################################
 echo ""
 echo "============================================================================"
-echo "Starting IBM Content Manager Export..."
+echo "Reading itemtypes from file..."
+echo "============================================================================"
+
+TOTAL_ITEMTYPES=0
+declare -a ITEMTYPE_ARRAY
+
+while IFS=$' \t' read -r EXPORT_NAME_TMP BASE_FOLDER_TMP ITEMTYPE_TMP EXTRA || [ -n "$EXPORT_NAME_TMP" ]; do
+    # Skip empty lines and comments
+    if [ -z "$EXPORT_NAME_TMP" ] || [[ "$EXPORT_NAME_TMP" =~ ^[[:space:]]*# ]]; then
+        continue
+    fi
+
+    # Validate that we have all three columns
+    if [ -z "$EXPORT_NAME_TMP" ] || [ -z "$BASE_FOLDER_TMP" ] || [ -z "$ITEMTYPE_TMP" ]; then
+        continue
+    fi
+
+    TOTAL_ITEMTYPES=$((TOTAL_ITEMTYPES + 1))
+    ITEMTYPE_ARRAY+=("$ITEMTYPE_TMP|$EXPORT_NAME_TMP|$BASE_FOLDER_TMP")
+done < "$ITEMTYPE_LIST_FILE"
+
+################################################################################
+# Display itemtype summary
+################################################################################
+echo ""
+echo "============================================================================"
+echo "IBM Content Manager Export - Starting"
 echo "============================================================================"
 echo "User: ${ICM_USER}"
 echo "Itemtype List File: ${ITEMTYPE_LIST_FILE}"
 echo ""
+echo "Total Itemtypes to Process: ${TOTAL_ITEMTYPES}"
+echo ""
+echo "Itemtypes List:"
+echo "----------------------------------------------------------------------------"
 
+DISPLAY_COUNT=1
+for ITEM in "${ITEMTYPE_ARRAY[@]}"; do
+    IFS='|' read -r DISP_ITEMTYPE DISP_EXPORT DISP_FOLDER <<< "$ITEM"
+    printf "  %2d. %-30s [%s]\n" "$DISPLAY_COUNT" "$DISP_ITEMTYPE" "$DISP_EXPORT"
+    DISPLAY_COUNT=$((DISPLAY_COUNT + 1))
+done
+
+echo "============================================================================"
+echo ""
+
+################################################################################
+# Process each itemtype
+################################################################################
 TOTAL_ERRORS=0
 ITEMTYPE_COUNT=0
 
@@ -298,13 +341,14 @@ while IFS=$' \t' read -r CURRENT_EXPORT_NAME CURRENT_BASE_FOLDER CURRENT_ITEMTYP
     ITEMTYPE_COUNT=$((ITEMTYPE_COUNT + 1))
 
     echo ""
-    echo "========================================================================"
-    echo "Processing Itemtype #${ITEMTYPE_COUNT}"
-    echo "Export Name: ${CURRENT_EXPORT_NAME}"
-    echo "Base Folder: ${CURRENT_BASE_FOLDER}"
-    echo "Itemtype: ${CURRENT_ITEMTYPE}"
-    echo "Started: $(date)"
-    echo "========================================================================"
+    echo "============================================================================"
+    echo ">>> EXPORTING ITEMTYPE ${ITEMTYPE_COUNT} of ${TOTAL_ITEMTYPES} <<<"
+    echo "============================================================================"
+    echo "  Itemtype:    ${CURRENT_ITEMTYPE}"
+    echo "  Export Name: ${CURRENT_EXPORT_NAME}"
+    echo "  Base Folder: ${CURRENT_BASE_FOLDER}"
+    echo "  Started:     $(date)"
+    echo "============================================================================"
 
     # Log progress
     echo "[$(date)] Processing itemtype: ${CURRENT_ITEMTYPE}" >> "${CURRENT_PROGRESS_LOG}"

@@ -572,6 +572,7 @@ function Process-ItemType {
         [string]$BaseFolder,
         [string]$ItemType,
         [int]$ItemTypeNumber,
+        [int]$TotalItemTypes = 1,
         [string]$User,
         [string]$Password
     )
@@ -599,12 +600,15 @@ function Process-ItemType {
     }
 
     # Display processing header
-    Write-SubHeader "Processing Itemtype #$ItemTypeNumber"
-    Write-Host "Export Name: $ExportName"
-    Write-Host "Base Folder: $BaseFolder"
-    Write-Host "Itemtype: $ItemType"
-    Write-Host "Started: $(Get-Timestamp)"
-    Write-Host ("-" * 72)
+    Write-Host ""
+    Write-Host ("=" * 76) -ForegroundColor Cyan
+    Write-Host ">>> EXPORTING ITEMTYPE $ItemTypeNumber of $TotalItemTypes <<<" -ForegroundColor Cyan
+    Write-Host ("=" * 76) -ForegroundColor Cyan
+    Write-Host "  Itemtype:    $ItemType" -ForegroundColor White
+    Write-Host "  Export Name: $ExportName" -ForegroundColor White
+    Write-Host "  Base Folder: $BaseFolder" -ForegroundColor White
+    Write-Host "  Started:     $(Get-Timestamp)" -ForegroundColor White
+    Write-Host ("=" * 76) -ForegroundColor Cyan
 
     Write-Log -Message "Processing itemtype: $ItemType" -LogFile $progressLog -NoConsole
 
@@ -790,13 +794,26 @@ try {
     }
 
     # Process items
-    Write-Header "Starting IBM Content Manager Export"
+    Write-Header "IBM Content Manager Export - Starting"
     Write-Host "User: $env:ICM_USER"
-    Write-Host "Itemtypes to process: $($itemsToProcess.Count)"
+    Write-Host ""
+    Write-Host "Total Itemtypes to Process: $($itemsToProcess.Count)"
+    Write-Host ""
+    Write-Host "Itemtypes List:"
+    Write-Host ("-" * 76)
+
+    $displayCount = 1
+    foreach ($item in $itemsToProcess) {
+        Write-Host ("{0,3}. {1,-30} [{2}]" -f $displayCount, $item.ItemType, $item.ExportName)
+        $displayCount++
+    }
+
+    Write-Host ("=" * 76)
     Write-Host ""
 
     $totalErrors = 0
     $itemTypeCount = 0
+    $totalItemTypes = $itemsToProcess.Count
 
     foreach ($item in $itemsToProcess) {
         $itemTypeCount++
@@ -805,6 +822,7 @@ try {
                                        -BaseFolder $item.BaseFolder `
                                        -ItemType $item.ItemType `
                                        -ItemTypeNumber $itemTypeCount `
+                                       -TotalItemTypes $totalItemTypes `
                                        -User $env:ICM_USER `
                                        -Password $env:ICM_PASSWORD
 
