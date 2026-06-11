@@ -213,6 +213,15 @@ Both scripts include:
 - Folder creation error checking
 - Export status verification
 - Detailed error messages with exit codes
+- **JVM Memory Management**: Automatic allocation of 2GB heap space to prevent OutOfMemoryError with large files
+
+### Handling Large Files (170MB+)
+
+The scripts are configured to handle large files by default with JVM memory parameters:
+- **Maximum Heap Size**: 2048m (2GB) - handles files up to 200MB
+- **Initial Heap Size**: 512m - for optimal performance
+
+If you need to export larger files, you can adjust the memory settings at the top of each script. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed instructions.
 
 ## Notes
 
@@ -245,26 +254,33 @@ Both scripts include:
 
 ## Troubleshooting
 
+For detailed troubleshooting information, see **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.
+
 ### Common Issues
 
-1. **Java not found**
+1. **OutOfMemoryError with large files (170MB+)**
+   - **Fixed**: Scripts now automatically allocate 2GB heap space
+   - For larger files, adjust `JAVA_MAX_HEAP` and `JAVA_MIN_HEAP` variables in the script
+   - See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#java-outofmemoryerror-with-large-files) for details
+
+2. **Java not found**
    - Windows: Verify JAVA_HOME path in script
    - Linux: Ensure java is in PATH
 
-2. **CLASSPATH errors**
+3. **CLASSPATH errors**
    - Verify all IBM DB2 CM library paths exist
    - Check that all JAR files are present
 
-3. **Permission denied**
+4. **Permission denied**
    - Windows: Run as Administrator if accessing system folders
    - Linux: Ensure script is executable (`chmod +x export_icm.sh`)
 
-4. **DB2 connection errors**
+5. **DB2 connection errors**
    - Verify DB2 is running
    - Check credentials are correct
    - Review DB2 profile sourcing (Linux)
 
-5. **Export fails**
+6. **Export fails**
    - Check log files in the log subfolder
    - Verify itemtype exists in the system
    - Ensure sufficient disk space

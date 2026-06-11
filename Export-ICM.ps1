@@ -64,6 +64,14 @@ $script:JAVA_EXE = Join-Path $JAVA_HOME "bin\java.exe"
 # Sample1 directory - contains TImportExportICM.ini and required classes
 $script:SAMPLE1_DIR = Join-Path $script:DB2_HOME "samples\java\icm\Sample1"
 
+# JVM Memory Configuration
+# Adjust these values based on your file sizes and available system memory
+# For files up to 200MB: 2048m is recommended
+# For files up to 500MB: 4096m is recommended
+# For files larger than 500MB: 8192m or higher may be needed
+$script:JAVA_MAX_HEAP = "2048m"  # Maximum heap size (-Xmx)
+$script:JAVA_MIN_HEAP = "512m"   # Initial heap size (-Xms)
+
 #endregion
 
 #region Helper Functions
@@ -349,8 +357,11 @@ function Invoke-ICMExport {
 
     $logFolder = Join-Path $BaseFolder "log"
 
-    # Build command arguments with explicit classpath
+    # Build command arguments with explicit classpath and JVM memory parameters
+    # Uses JAVA_MAX_HEAP and JAVA_MIN_HEAP variables configured at top of script
     $arguments = @(
+        "-Xmx$($script:JAVA_MAX_HEAP)"
+        "-Xms$($script:JAVA_MIN_HEAP)"
         "-classpath", "`"$script:FULL_CLASSPATH`""
         "TExportManagerICM"
         "-u", $User

@@ -85,6 +85,14 @@ DB2_PROFILE="/home/db2cli1/sqllib/db2profile"
 IBM_HOME="/IBM"
 DB2_SQLLIB="/IBM/SQLLIB"
 
+# JVM Memory Configuration
+# Adjust these values based on your file sizes and available system memory
+# For files up to 200MB: -Xmx2048m is recommended
+# For files up to 500MB: -Xmx4096m is recommended
+# For files larger than 500MB: -Xmx8192m or higher may be needed
+JAVA_MAX_HEAP="2048m"   # Maximum heap size (-Xmx)
+JAVA_MIN_HEAP="512m"    # Initial heap size (-Xms)
+
 # ICM credentials - MUST be set via environment variables before running
 # Example: export ICM_USER="your_username"
 # Example: export ICM_PASSWORD="your_password"
@@ -323,8 +331,9 @@ while IFS=$' \t' read -r CURRENT_EXPORT_NAME CURRENT_BASE_FOLDER CURRENT_ITEMTYP
         RESUME_ITEMID=$(grep "^${CURRENT_ITEMTYPE}|" "${CURRENT_RESUME_LOG}" | cut -d'|' -f2)
     fi
 
-    # Build export command
-    EXPORT_CMD="java TExportManagerICM -u ${ICM_USER} -p ${ICM_PASSWORD} -m ${CURRENT_EXPORT_NAME} -l \"${CURRENT_LOG_FOLDER}\" -a \"${CURRENT_ITEMTYPE}\" -v \"${CURRENT_BASE_FOLDER}\""
+    # Build export command with JVM memory parameters
+    # Uses JAVA_MAX_HEAP and JAVA_MIN_HEAP variables configured at top of script
+    EXPORT_CMD="java -Xmx${JAVA_MAX_HEAP} -Xms${JAVA_MIN_HEAP} TExportManagerICM -u ${ICM_USER} -p ${ICM_PASSWORD} -m ${CURRENT_EXPORT_NAME} -l \"${CURRENT_LOG_FOLDER}\" -a \"${CURRENT_ITEMTYPE}\" -v \"${CURRENT_BASE_FOLDER}\""
 
     # Add resume parameters if we have a resume point
     if [ -n "$RESUME_ITEMID" ]; then
