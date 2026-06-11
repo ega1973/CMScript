@@ -46,6 +46,17 @@ JAVA_MIN_HEAP="512m"    # Initial heap size (-Xms)
 
 **Recommended values based on file sizes:**
 
+**FOR 32-BIT JAVA (Windows 2003/2008 32-bit):**
+
+| Maximum File Size | JAVA_MAX_HEAP | JAVA_MIN_HEAP | Notes |
+|-------------------|---------------|---------------|-------|
+| Up to 100MB       | 1024m (1GB)   | 256m          | Safe for most 32-bit systems |
+| Up to 150MB       | 1280m (1.25GB)| 256m          | **Maximum recommended for 32-bit** |
+| Up to 175MB       | 1400m (1.4GB) | 256m          | Risky - may fail on some systems |
+| Larger than 175MB | **Not possible** | **N/A**    | **MUST upgrade to 64-bit Java** |
+
+**FOR 64-BIT JAVA:**
+
 | Maximum File Size | JAVA_MAX_HEAP | JAVA_MIN_HEAP |
 |-------------------|---------------|---------------|
 | Up to 200MB       | 2048m (2GB)   | 512m          |
@@ -69,14 +80,131 @@ Use the same recommended values as shown in the table above.
 
 1. **System Memory**: Ensure your system has enough RAM available. The JVM will attempt to allocate the memory you specify.
 
-2. **32-bit vs 64-bit Java**: 
-   - 32-bit Java has a maximum heap size limit of approximately 1.5-2GB
-   - For files larger than this, you must use 64-bit Java
+2. **32-bit vs 64-bit Java - CRITICAL FOR WINDOWS 2003/2008 32-BIT**: 
+   - **32-bit Java has a HARD LIMIT of approximately 1.5GB (1536m) maximum heap**
+   - **The scripts are now configured with 1280m by default (safe for 32-bit)**
+   - Attempting to use 2048m or higher on 32-bit Java will FAIL with this error:
+     ```
+     Error occurred during initialization of VM
+     Could not reserve enough space for object heap
+     ```
+   - **Windows 2003/2008 32-bit**: Maximum safe heap is **1280m-1400m**
+   - **For files larger than 150MB on 32-bit**: You MUST upgrade to 64-bit Java
    - Check your Java version: `java -version` (should show "64-Bit" for 64-bit)
+   
+   **How to check if you have 32-bit or 64-bit Java:**
+   
+   **Windows (Command Prompt):**
+   ```cmd
+   java -version
+   ```
+   Look for "64-Bit" in the output:
+   - `Java HotSpot(TM) 64-Bit Server VM` = 64-bit Java ✓
+   - `Java HotSpot(TM) Client VM` or no "64-Bit" = 32-bit Java ⚠️
+   
+   **Linux:**
+   ```bash
+   java -version
+   ```
+   Look for "64-Bit" in the output.
 
 3. **Multiple Concurrent Exports**: If running multiple exports simultaneously, each process will use the configured memory. Plan accordingly.
 
 4. **Performance vs Memory**: Higher initial heap size (-Xms) can improve performance but uses more RAM from the start.
+
+---
+
+### Could Not Reserve Enough Space for Object Heap
+
+#### Problem
+
+When running the script, you immediately get this error:
+
+```
+Error occurred during initialization of VM
+Could not reserve enough space for object heap
+Error: Could not create the Java Virtual Machine.
+Error: A fatal exception has occurred. Program will exit.
+```
+
+#### Root Cause
+
+This error occurs when:
+1. **You have 32-bit Java and the heap size is set too high** (most common on Windows 2003/2008 32-bit)
+2. You don't have enough available RAM
+3. Windows is limiting the process memory
+
+#### Solution
+
+**For 32-bit Java (Windows 2003/2008 32-bit):**
+
+The scripts are now configured with safe defaults (1280m), but if you manually increased the values, reduce them:
+
+**PowerShell (Export-ICM.ps1) - Line ~73:**
+```powershell
+$script:JAVA_MAX_HEAP = "1280m"  # DO NOT exceed 1400m on 32-bit!
+$script:JAVA_MIN_HEAP = "256m"
+```
+
+**Linux (export_icm.sh) - Line ~96:**
+```bash
+JAVA_MAX_HEAP="1280m"   # DO NOT exceed 1400m on 32-bit!
+JAVA_MIN_HEAP="256m"
+```
+
+**If you need to export larger files:**
+- **Option 1 (Recommended)**: Upgrade to 64-bit Java
+- **Option 2**: Try reducing to 1024m or even 768m
+- **Option 3**: Upgrade to 64-bit Windows and 64-bit Java
+
+**To verify your Java is 32-bit:**
+```cmd
+java -version
+```
+If you don't see "64-Bit" in the output, you have 32-bit Java.
+
+---
+
+### Upgrading to 64-bit Java on Windows 2003/2008
+
+If you need to handle files larger than 150MB, you must upgrade to 64-bit Java.
+
+#### Prerequisites
+- Windows 2003/2008 **64-bit edition** (32-bit Windows cannot run 64-bit Java)
+- Check your Windows version: `systeminfo | findstr /C:"System Type"`
+  - `x64-based PC` = 64-bit Windows ✓
+  - `x86-based PC` = 32-bit Windows (cannot use 64-bit Java)
+
+#### Steps to Upgrade
+
+1. **Download 64-bit JDK**
+   - Download Java SE 6 (64-bit) from Oracle (jdk-6uXX-windows-x64.exe)
+   - Note: JDK 1.6.0_26 is what your scripts reference
+
+2. **Install 64-bit JDK**
+   - Install to a different location (e.g., `E:\jdk1.6.0_26-x64`)
+   - Keep 32-bit version if needed by other applications
+
+3. **Update Script Configuration**
+   
+   **PowerShell (Export-ICM.ps1):**
+   ```powershell
+   $script:JAVA_HOME = "E:\jdk1.6.0_26-x64"  # Update to 64-bit path
+   ```
+   
+4. **Update Memory Settings**
+   
+   **PowerShell (Export-ICM.ps1):**
+   ```powershell
+   $script:JAVA_MAX_HEAP = "2048m"  # Now you can use 2GB+
+   $script:JAVA_MIN_HEAP = "512m"
+   ```
+
+5. **Verify 64-bit Java**
+   ```cmd
+   E:\jdk1.6.0_26-x64\bin\java -version
+   ```
+   Should show "64-Bit Server VM"
 
 ---
 

@@ -65,12 +65,30 @@ $script:JAVA_EXE = Join-Path $JAVA_HOME "bin\java.exe"
 $script:SAMPLE1_DIR = Join-Path $script:DB2_HOME "samples\java\icm\Sample1"
 
 # JVM Memory Configuration
-# Adjust these values based on your file sizes and available system memory
-# For files up to 200MB: 2048m is recommended
-# For files up to 500MB: 4096m is recommended
-# For files larger than 500MB: 8192m or higher may be needed
-$script:JAVA_MAX_HEAP = "2048m"  # Maximum heap size (-Xmx)
-$script:JAVA_MIN_HEAP = "512m"   # Initial heap size (-Xms)
+# IMPORTANT: 32-bit Java (Windows 2003/2008 32-bit) has a maximum heap limit of ~1.5GB
+# 64-bit Java can use much larger heap sizes
+#
+# TO CHECK YOUR JAVA VERSION: Open Command Prompt and run: java -version
+# Look for "64-Bit" in the output. If not present, you have 32-bit Java.
+#
+# Recommended settings:
+# 32-BIT JAVA (Windows 2003/2008 32-bit):
+#   - Maximum safe heap: 1280m (1.25GB) - DO NOT exceed 1536m
+#   - For files up to 150MB: Use 1280m max heap
+#   - For larger files: You MUST upgrade to 64-bit Java
+#
+# 64-BIT JAVA:
+#   - For files up to 200MB: 2048m
+#   - For files up to 500MB: 4096m
+#   - For files larger than 500MB: 8192m or higher
+#
+# DEFAULT SETTINGS (Safe for 32-bit Java):
+$script:JAVA_MAX_HEAP = "1280m"  # Maximum heap size (-Xmx) - Safe for 32-bit
+$script:JAVA_MIN_HEAP = "256m"   # Initial heap size (-Xms)
+#
+# IF YOU HAVE 64-BIT JAVA, you can increase these values:
+# $script:JAVA_MAX_HEAP = "2048m"  # For 64-bit Java
+# $script:JAVA_MIN_HEAP = "512m"   # For 64-bit Java
 
 #endregion
 

@@ -23,6 +23,8 @@ Both scripts automatically:
 ### Windows
 - PowerShell 5.1 or later
 - Java Development Kit (JDK) 1.6 or later
+  - **32-bit Java**: Maximum file size ~150MB (see [Windows 2008 32-bit Guide](WINDOWS-2008-32BIT-GUIDE.md))
+  - **64-bit Java**: Recommended for files larger than 150MB
 - IBM Content Manager client libraries
 - DB2 client installed
 - See [README-PowerShell.md](README-PowerShell.md) for complete PowerShell documentation
@@ -217,11 +219,22 @@ Both scripts include:
 
 ### Handling Large Files (170MB+)
 
-The scripts are configured to handle large files by default with JVM memory parameters:
-- **Maximum Heap Size**: 2048m (2GB) - handles files up to 200MB
-- **Initial Heap Size**: 512m - for optimal performance
+The scripts are configured to handle large files by default with JVM memory parameters.
 
-If you need to export larger files, you can adjust the memory settings at the top of each script. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed instructions.
+**IMPORTANT - 32-bit Java Limitations (Windows 2003/2008 32-bit):**
+- **Maximum heap size**: 1280m-1400m (1.25-1.4GB)
+- **Maximum file size**: ~150MB
+- **For larger files**: You MUST upgrade to 64-bit Java
+- See **[Windows 2008 32-bit Quick Guide](WINDOWS-2008-32BIT-GUIDE.md)** for detailed information
+
+**Default Settings (Safe for 32-bit Java):**
+- **Maximum Heap Size**: 1280m (1.28GB) - handles files up to 150MB on 32-bit Java
+- **Initial Heap Size**: 256m - for optimal performance
+
+**For 64-bit Java:**
+- You can increase to 2048m (2GB) or higher for larger files
+- Edit the memory configuration at the top of each script
+- See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed instructions
 
 ## Notes
 
