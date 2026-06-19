@@ -342,7 +342,7 @@ IF !IS_MULTI_MODE! EQU 0 (
         )
 
         REM Build export command
-        SET EXPORT_CMD="%JAVA_EXE%" TExportManagerICM -u %ICM_USER% -p %ICM_PASSWORD% -m !CURRENT_EXPORT_NAME! -l "!CURRENT_LOG_FOLDER!" -a "!CURRENT_ITEMTYPE!" -v "!CURRENT_BASE_FOLDER!"
+        SET EXPORT_CMD="%JAVA_EXE%" TExportManagerICM -u %ICM_USER% -p %ICM_PASSWORD% -m !CURRENT_EXPORT_NAME! -l "!CURRENT_LOG_FOLDER!" -a "!CURRENT_ITEMTYPE!" -v "!CURRENT_BASE_FOLDER!" -i "!CURRENT_BASE_FOLDER!\TImportExportICM.ini"
 
         REM Add resume parameters if we have a resume point
         IF NOT "!RESUME_ITEMID!"=="" (
